@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DriverEdSimulator - Progress Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+        
+        .stat-card h3 {
+            color: #555;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            font-weight: 500;
+        }
+        
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 15px 0;
+        }
+        
+        .stat-description {
+            color: #777;
+            font-size: 0.9em;
+        }
+        
+        .progress-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        
+        .progress-section h2 {
+            color: #333;
+            margin-bottom: 25px;
+            font-size: 1.8em;
+        }
+        
+        .progress-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+        }
+        
+        .progress-item:last-child {
+            border-bottom: none;
+        }
+        
+        .progress-label {
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .progress-value {
+            color: #4facfe;
+            font-weight: bold;
+            background: rgba(79, 172, 254, 0.1);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: #666;
+        }
+        
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #4facfe;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error {
+            background: rgba(255, 235, 238, 0.9);
+            color: #c62828;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #c62828;
+        }
+        
+        .success-message {
+            background: rgba(232, 245, 233, 0.9);
+            color: #2e7d32;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #2e7d32;
+        }
+        
+        .refresh-btn {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 500;
+            transition: transform 0.3s ease;
+            margin: 20px 0;
+        }
+        
+        .refresh-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .game-embed {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .game-embed h2 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+        
+        .game-link {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-weight: 500;
+            transition: transform 0.3s ease;
+        }
+        
+        .game-link:hover {
+            transform: translateY(-2px);
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .stat-value {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>DriverEdSimulator</h1>
+            <p>Track your learning progress across all platforms</p>
+            <button class="refresh-btn" onclick="refreshData()">Refresh Data</button>
+        </div>
+        
+        <div id="dashboard-content">
+            <div class="loading">
+                <p>Loading your progress data...</p>
+            </div>
+        </div>
+        
+        <div class="progress-section">
+            <h2>Recent Activity</h2>
+            <div id="recent-activity">
+                <!-- Recent progress items will be loaded here -->
+            </div>
+        </div>
+        
+        <div class="game-embed">
+            <h2>Play the Game</h2>
+            <p>Continue your learning journey</p>
+            <a href="../index.html" class="game-link">Launch DriverEdSimulator</a>
+        </div>
+    </div>
+
+    <!-- Environment Configuration -->
+    <script src="../env-config.js"></script>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, query, where, orderBy, limit, getDocs } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+         // Firebase configuration - SAME AS YOUR GAME
+         // Read from window.env or use fallback values
+         const firebaseConfig = {
+             apiKey: window.env?.FIREBASE_API_KEY || "AIzaSyAJ3wZzKUjkrFKiahV64Rnl2OIk7eWcWFI",
+             authDomain: window.env?.FIREBASE_AUTH_DOMAIN || "drivesafeacademy.firebaseapp.com",
+             projectId: window.env?.FIREBASE_PROJECT_ID || "drivesafeacademy",
+             storageBucket: window.env?.FIREBASE_STORAGE_BUCKET || "drivesafeacademy.firebasestorage.app",
+             messagingSenderId: window.env?.FIREBASE_MESSAGING_SENDER_ID || "1073277848731",
+             appId: window.env?.FIREBASE_APP_ID || "1:1073277848731:web:c250fd9cfb7f7416a08a3e"
+         };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        class GameProgressDashboard {
+            constructor() {
+                this.userId = this.getUserId();
+                this.init();
+            }
+
+            getUserId() {
+                let userId = localStorage.getItem('unity_user_id');
+                if (!userId) {
+                    // Generate a demo user ID for demonstration
+                    userId = 'demo_user_' + Date.now();
+                    localStorage.setItem('unity_user_id', userId);
+                    this.showMessage('Demo user created. Play the game to see real progress tracking!', 'success');
+                }
+                return userId;
+            }
+
+            async init() {
+                try {
+                    await this.loadDashboardData();
+                } catch (error) {
+                    this.showError('Failed to load dashboard data: ' + error.message);
+                }
+            }
+
+            async loadDashboardData() {
+                const [stats, recentActivity] = await Promise.all([
+                    this.getUserStats(),
+                    this.getRecentActivity()
+                ]);
+
+                this.renderDashboard(stats);
+                this.renderRecentActivity(recentActivity);
+            }
+
+            async getUserStats() {
+                try {
+                    const progressQuery = query(
+                        collection(db, 'gameProgress'),
+                        where('userId', '==', this.userId),
+                        where('gameId', '==', 'DriverEdSimulator_Module1A')
+                    );
+
+                    const scoreQuery = query(
+                        collection(db, 'gameScores'),
+                        where('userId', '==', this.userId),
+                        where('gameId', '==', 'DriverEdSimulator_Module1A')
+                    );
+
+                    const violationsQuery = query(
+                        collection(db, 'violations'),
+                        where('userId', '==', this.userId),
+                        where('gameId', '==', 'DriverEdSimulator_Module1A')
+                    );
+
+                    const collisionsQuery = query(
+                        collection(db, 'collisions'),
+                        where('userId', '==', this.userId),
+                        where('gameId', '==', 'DriverEdSimulator_Module1A')
+                    );
+
+                    const sessionsQuery = query(
+                        collection(db, 'sessions'),
+                        where('userId', '==', this.userId),
+                        where('gameId', '==', 'DriverEdSimulator_Module1A')
+                    );
+
+                    const [progressSnapshot, scoreSnapshot, violationsSnapshot, collisionsSnapshot, sessionsSnapshot] = await Promise.all([
+                        getDocs(progressQuery),
+                        getDocs(scoreQuery),
+                        getDocs(violationsQuery),
+                        getDocs(collisionsQuery),
+                        getDocs(sessionsQuery)
+                    ]);
+
+                    let totalPlayTime = 0;
+                    let highScore = 0;
+                    let completedLessons = 0;
+                    let uniqueWebsites = new Set();
+                    let totalViolations = 0;
+                    let totalCollisions = 0;
+                    let totalDistance = 0;
+                    let maxSpeed = 0;
+                    let violationTypes = {};
+                    let collisionTypes = {};
+
+                    progressSnapshot.forEach(doc => {
+                        const data = doc.data();
+                        if (data.progressData) {
+                            totalPlayTime += data.progressData.playTime || 0;
+                            completedLessons += data.progressData.completedLessons || 0;
+                        }
+                        if (data.websiteUrl) {
+                            uniqueWebsites.add(new URL(data.websiteUrl).hostname);
+                        }
+                    });
+
+                    scoreSnapshot.forEach(doc => {
+                        const data = doc.data();
+                        const score = data.scoreData?.score || 0;
+                        if (score > highScore) {
+                            highScore = score;
+                        }
+                    });
+
+                    violationsSnapshot.forEach(doc => {
+                        const data = doc.data();
+                        totalViolations++;
+                        const violationType = data.violationData?.violationType || 'Unknown';
+                        violationTypes[violationType] = (violationTypes[violationType] || 0) + 1;
+                    });
+
+                    collisionsSnapshot.forEach(doc => {
+                        const data = doc.data();
+                        totalCollisions++;
+                        const collisionType = data.collisionData?.collisionType || 'Unknown';
+                        collisionTypes[collisionType] = (collisionTypes[collisionType] || 0) + 1;
+                    });
+
+                    sessionsSnapshot.forEach(doc => {
+                        const data = doc.data();
+                        if (data.sessionData) {
+                            totalDistance += data.sessionData.totalDistance || 0;
+                            if (data.sessionData.maxSpeed > maxSpeed) {
+                                maxSpeed = data.sessionData.maxSpeed;
+                            }
+                        }
+                    });
+
+                    return {
+                        totalSessions: progressSnapshot.size,
+                        totalScores: scoreSnapshot.size,
+                        totalPlayTime: Math.round(totalPlayTime / 60), // Convert to minutes
+                        highScore: highScore,
+                        completedLessons: completedLessons,
+                        lastPlayed: this.getLastPlayedDate(progressSnapshot),
+                        uniqueWebsites: uniqueWebsites.size,
+                        totalViolations: totalViolations,
+                        totalCollisions: totalCollisions,
+                        totalDistance: Math.round(totalDistance),
+                        maxSpeed: Math.round(maxSpeed),
+                        violationTypes: violationTypes,
+                        collisionTypes: collisionTypes
+                    };
+                } catch (error) {
+                    console.error('Error getting user stats:', error);
+                    return {
+                        totalSessions: 0,
+                        totalScores: 0,
+                        totalPlayTime: 0,
+                        highScore: 0,
+                        completedLessons: 0,
+                        lastPlayed: null,
+                        uniqueWebsites: 0,
+                        totalViolations: 0,
+                        totalCollisions: 0,
+                        totalDistance: 0,
+                        maxSpeed: 0,
+                        violationTypes: {},
+                        collisionTypes: {}
+                    };
+                }
+            }
+
+            async getRecentActivity() {
+                try {
+                    const recentQuery = query(
+                        collection(db, 'gameProgress'),
+                        where('userId', '==', this.userId),
+                        where('gameId', '==', 'DriverEdSimulator_Module1A'),
+                        orderBy('timestamp', 'desc'),
+                        limit(10)
+                    );
+
+                    const snapshot = await getDocs(recentQuery);
+                    const activities = [];
+
+                    snapshot.forEach(doc => {
+                        const data = doc.data();
+                        activities.push({
+                            timestamp: data.timestamp?.toDate() || new Date(),
+                            progressData: data.progressData,
+                            websiteUrl: data.websiteUrl,
+                            sessionId: data.sessionId
+                        });
+                    });
+
+                    return activities;
+                } catch (error) {
+                    console.error('Error getting recent activity:', error);
+                    return [];
+                }
+            }
+
+            renderDashboard(stats) {
+                const dashboardHTML = `
+                    <div class="dashboard-grid">
+                        <div class="stat-card">
+                            <h3>Total Sessions</h3>
+                            <div class="stat-value">${stats.totalSessions}</div>
+                            <p class="stat-description">Times you've played the game</p>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <h3>Play Time</h3>
+                            <div class="stat-value">${stats.totalPlayTime}m</div>
+                            <p class="stat-description">Total time spent learning</p>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <h3>Distance Driven</h3>
+                            <div class="stat-value">${stats.totalDistance}km</div>
+                            <p class="stat-description">Total distance covered</p>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <h3>Max Speed</h3>
+                            <div class="stat-value">${stats.maxSpeed}km/h</div>
+                            <p class="stat-description">Highest speed reached</p>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <h3>Traffic Violations</h3>
+                            <div class="stat-value">${stats.totalViolations}</div>
+                            <p class="stat-description">Total violations recorded</p>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <h3>Collisions</h3>
+                            <div class="stat-value">${stats.totalCollisions}</div>
+                            <p class="stat-description">Total collisions occurred</p>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <h3>Lessons Completed</h3>
+                            <div class="stat-value">${stats.completedLessons}</div>
+                            <p class="stat-description">Modules finished</p>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <h3>High Score</h3>
+                            <div class="stat-value">${stats.highScore}</div>
+                            <p class="stat-description">Your best performance</p>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <h3>Cross-Platform</h3>
+                            <div class="stat-value">${stats.uniqueWebsites}</div>
+                            <p class="stat-description">Different sites accessed</p>
+                        </div>
+                    </div>
+                    
+                    ${this.renderViolationBreakdown(stats.violationTypes)}
+                    ${this.renderCollisionBreakdown(stats.collisionTypes)}
+                `;
+
+                document.getElementById('dashboard-content').innerHTML = dashboardHTML;
+            }
+
+            renderViolationBreakdown(violationTypes) {
+                if (Object.keys(violationTypes).length === 0) {
+                    return '';
+                }
+
+                const violationItems = Object.entries(violationTypes)
+                    .map(([type, count]) => `
+                        <div class="progress-item">
+                            <div class="progress-label">${type}</div>
+                            <div class="progress-value">${count}</div>
+                        </div>
+                    `).join('');
+
+                return `
+                    <div class="progress-section">
+                        <h2>Violation Breakdown</h2>
+                        <div id="violation-breakdown">
+                            ${violationItems}
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderCollisionBreakdown(collisionTypes) {
+                if (Object.keys(collisionTypes).length === 0) {
+                    return '';
+                }
+
+                const collisionItems = Object.entries(collisionTypes)
+                    .map(([type, count]) => `
+                        <div class="progress-item">
+                            <div class="progress-label">${type}</div>
+                            <div class="progress-value">${count}</div>
+                        </div>
+                    `).join('');
+
+                return `
+                    <div class="progress-section">
+                        <h2>Collision Breakdown</h2>
+                        <div id="collision-breakdown">
+                            ${collisionItems}
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderRecentActivity(activities) {
+                if (activities.length === 0) {
+                    document.getElementById('recent-activity').innerHTML = `
+                        <div style="text-align: center; padding: 40px; color: #666;">
+                            <p>No recent activity found.</p>
+                            <p>Play the game to start tracking your progress!</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const activityHTML = activities.map(activity => `
+                    <div class="progress-item">
+                        <div class="progress-label">
+                            Session on ${this.getDomainFromUrl(activity.websiteUrl)}
+                            ${activity.progressData?.completedLessons ? ` - ${activity.progressData.completedLessons} lessons completed` : ''}
+                        </div>
+                        <div class="progress-value">
+                            ${this.formatDate(activity.timestamp)}
+                        </div>
+                    </div>
+                `).join('');
+
+                document.getElementById('recent-activity').innerHTML = activityHTML;
+            }
+
+            getDomainFromUrl(url) {
+                try {
+                    return new URL(url).hostname;
+                } catch {
+                    return 'Unknown Site';
+                }
+            }
+
+            formatDate(date) {
+                if (!date) return 'Never';
+                
+                const now = new Date();
+                const diff = now - date;
+                const minutes = Math.floor(diff / 60000);
+                const hours = Math.floor(diff / 3600000);
+                const days = Math.floor(diff / 86400000);
+
+                if (minutes < 1) return 'Just now';
+                if (minutes < 60) return `${minutes}m ago`;
+                if (hours < 24) return `${hours}h ago`;
+                if (days < 7) return `${days}d ago`;
+                
+                return date.toLocaleDateString();
+            }
+
+            getLastPlayedDate(snapshot) {
+                let latestDate = null;
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const timestamp = data.timestamp?.toDate();
+                    if (!latestDate || (timestamp && timestamp > latestDate)) {
+                        latestDate = timestamp;
+                    }
+                });
+                return latestDate;
+            }
+
+            showError(message) {
+                document.getElementById('dashboard-content').innerHTML = `
+                    <div class="error">${message}</div>
+                `;
+            }
+
+            showMessage(message, type) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = type === 'error' ? 'error' : 'success-message';
+                messageDiv.textContent = message;
+                document.querySelector('.container').insertBefore(messageDiv, document.querySelector('.header').nextSibling);
+                
+                setTimeout(() => {
+                    messageDiv.remove();
+                }, 5000);
+            }
+        }
+
+        // Global refresh function
+        window.refreshData = async () => {
+            const dashboard = new GameProgressDashboard();
+            await dashboard.loadDashboardData();
+        };
+
+        // Initialize dashboard
+        new GameProgressDashboard();
+    </script>
+</body>
+</html>
