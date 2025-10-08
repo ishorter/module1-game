@@ -267,21 +267,19 @@
     </div>
 
     <!-- Environment Configuration -->
-    <script src="../env-config.js"></script>
 
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getFirestore, collection, query, where, orderBy, limit, getDocs } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
          // Firebase configuration - SAME AS YOUR GAME
-         // Read from window.env or use fallback values
          const firebaseConfig = {
-             apiKey: window.env?.FIREBASE_API_KEY || "AIzaSyAJ3wZzKUjkrFKiahV64Rnl2OIk7eWcWFI",
-             authDomain: window.env?.FIREBASE_AUTH_DOMAIN || "drivesafeacademy.firebaseapp.com",
-             projectId: window.env?.FIREBASE_PROJECT_ID || "drivesafeacademy",
-             storageBucket: window.env?.FIREBASE_STORAGE_BUCKET || "drivesafeacademy.firebasestorage.app",
-             messagingSenderId: window.env?.FIREBASE_MESSAGING_SENDER_ID || "1073277848731",
-             appId: window.env?.FIREBASE_APP_ID || "1:1073277848731:web:c250fd9cfb7f7416a08a3e"
+             apiKey: "AIzaSyAJ3wZzKUjkrFKiahV64Rnl2OIk7eWcWFI",
+             authDomain: "drivesafeacademy.firebaseapp.com",
+             projectId: "drivesafeacademy",
+             storageBucket: "drivesafeacademy.firebasestorage.app",
+             messagingSenderId: "1073277848731",
+             appId: "1:1073277848731:web:c250fd9cfb7f7416a08a3e"
          };
 
         const app = initializeApp(firebaseConfig);

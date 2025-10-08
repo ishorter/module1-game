@@ -3,12 +3,12 @@ import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebas
 import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 export const firebaseConfig = {
-  apiKey: window.env?.FIREBASE_API_KEY,
-  authDomain: window.env?.FIREBASE_AUTH_DOMAIN,
-  projectId: window.env?.FIREBASE_PROJECT_ID,
-  storageBucket: window.env?.FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: window.env?.FIREBASE_MESSAGING_SENDER_ID,
-  appId: window.env?.FIREBASE_APP_ID 
+  apiKey: "AIzaSyAJ3wZzKUjkrFKiahV64Rnl2OIk7eWcWFI",
+  authDomain: "drivesafeacademy.firebaseapp.com",
+  projectId: "drivesafeacademy",
+  storageBucket: "drivesafeacademy.firebasestorage.app",
+  messagingSenderId: "1073277848731",
+  appId: "1:1073277848731:web:c250fd9cfb7f7416a08a3e"
 };
 
 // Initialize Firebase
