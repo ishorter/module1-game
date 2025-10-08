@@ -30,58 +30,12 @@ class UnityFirebaseBridge {
     console.log('✅ Unity Firebase Bridge initialized successfully');
     console.log('🎯 Ready to receive Unity calls');
     
-    // Generate test data to verify Firestore connection works
-    setTimeout(() => this.generateTestData(), 3000);
+    // Test communication disabled - waiting for real Unity integration
+    // setTimeout(() => this.testCommunication(), 2000);
     
     return true;
   }
 
-  // Generate test data to verify Firestore connection works
-  async generateTestData() {
-    if (!this.isInitialized || !this.db) return;
-    
-    console.log('🧪 FIREBASE: Generating test data to verify connection...');
-    
-    try {
-      // Test violation data
-      const testViolation = {
-        userId: this.userId,
-        sessionId: this.getSessionId(),
-        gameId: 'DriverEdSimulator_Module1A',
-        violationType: 'Test Violation',
-        speed: 65,
-        location: 'Test Location',
-        severity: 'Low',
-        timestamp: serverTimestamp(),
-        websiteUrl: window.location.href
-      };
-      
-      // Test progress data
-      const testProgress = {
-        userId: this.userId,
-        sessionId: this.getSessionId(),
-        gameId: 'DriverEdSimulator_Module1A',
-        level: 1,
-        score: 1000,
-        completion: 25,
-        timeSpent: 60,
-        timestamp: serverTimestamp(),
-        websiteUrl: window.location.href
-      };
-      
-      // Save test data
-      const violationRef = await addDoc(collection(this.db, 'violations'), testViolation);
-      const progressRef = await addDoc(collection(this.db, 'gameProgress'), testProgress);
-      
-      console.log('✅ FIREBASE: Test data generated and saved successfully!');
-      console.log('📊 FIREBASE: Violation ID:', violationRef.id);
-      console.log('📊 FIREBASE: Progress ID:', progressRef.id);
-      console.log('🎯 FIREBASE: Check your Firestore console to see the data!');
-      
-    } catch (error) {
-      console.error('❌ FIREBASE: Error generating test data:', error);
-    }
-  }
 
   // Test C# ↔ JavaScript communication (DISABLED - Real game data only)
   testCommunication() {
@@ -137,7 +91,22 @@ class UnityFirebaseBridge {
   // Handle progress data from Unity
   async handleProgress(progressData) {
     try {
-      const data = typeof progressData === 'string' ? JSON.parse(progressData) : progressData;
+      let data;
+      
+      // Check if it's JSON or pipe-separated data
+      if (progressData.includes('|')) {
+        // Simple pipe-separated format: "level|score|completion|timeSpent"
+        const parts = progressData.split('|');
+        data = {
+          level: parseInt(parts[0]) || 1,
+          score: parseInt(parts[1]) || 0,
+          completion: parseFloat(parts[2]) || 0,
+          timeSpent: parseFloat(parts[3]) || 0
+        };
+      } else {
+        // JSON format
+        data = typeof progressData === 'string' ? JSON.parse(progressData) : progressData;
+      }
       
       const progress = {
         userId: this.userId,
@@ -157,14 +126,14 @@ class UnityFirebaseBridge {
       
       // Notify Unity of success
       if (this.unityInstance) {
-        this.unityInstance.SendMessage('GameManager', 'OnProgressSaved', 'success');
+        this.unityInstance.SendMessage('SimpleGameDataManager', 'OnProgressSaved', 'success');
       }
       
       return { success: true, id: docRef.id };
     } catch (error) {
       console.error('❌ FIREBASE: Error saving progress:', error);
       if (this.unityInstance) {
-        this.unityInstance.SendMessage('GameManager', 'OnProgressSaved', 'error');
+        this.unityInstance.SendMessage('SimpleGameDataManager', 'OnProgressSaved', 'error');
       }
       return { success: false, error: error.message };
     }
@@ -173,7 +142,22 @@ class UnityFirebaseBridge {
   // Handle violation data from Unity
   async handleViolation(violationData) {
     try {
-      const data = typeof violationData === 'string' ? JSON.parse(violationData) : violationData;
+      let data;
+      
+      // Check if it's JSON or pipe-separated data
+      if (violationData.includes('|')) {
+        // Simple pipe-separated format: "type|speed|location|violationNumber"
+        const parts = violationData.split('|');
+        data = {
+          type: parts[0] || 'Unknown',
+          speed: parseFloat(parts[1]) || 0,
+          location: parts[2] || 'Unknown',
+          violationNumber: parseInt(parts[3]) || 1
+        };
+      } else {
+        // JSON format
+        data = typeof violationData === 'string' ? JSON.parse(violationData) : violationData;
+      }
       
       // Update violation count
       this.sessionData.violationCount = (this.sessionData.violationCount || 0) + 1;
@@ -182,10 +166,10 @@ class UnityFirebaseBridge {
         userId: this.userId,
         gameId: 'DriverEdSimulator_Module1A',
         violationType: data.type || 'Unknown',
-        severity: data.severity || 'Medium',
+        severity: this.calculateSeverity(data.speed, data.type),
         speed: data.speed || 0,
         location: data.location || 'Unknown',
-        violationNumber: this.sessionData.violationCount,
+        violationNumber: data.violationNumber || this.sessionData.violationCount,
         timestamp: serverTimestamp(),
         websiteUrl: window.location.href,
         sessionId: this.getSessionId()
@@ -203,7 +187,7 @@ class UnityFirebaseBridge {
       
       // Notify Unity
       if (this.unityInstance) {
-        this.unityInstance.SendMessage('GameManager', 'OnViolationSaved', 'success');
+        this.unityInstance.SendMessage('SimpleGameDataManager', 'OnViolationSaved', 'success');
       }
       
       return { success: true, id: docRef.id };
@@ -216,7 +200,22 @@ class UnityFirebaseBridge {
   // Handle collision data from Unity
   async handleCollision(collisionData) {
     try {
-      const data = typeof collisionData === 'string' ? JSON.parse(collisionData) : collisionData;
+      let data;
+      
+      // Check if it's JSON or pipe-separated data
+      if (collisionData.includes('|')) {
+        // Simple pipe-separated format: "type|objectHit|impactForce|collisionNumber"
+        const parts = collisionData.split('|');
+        data = {
+          type: parts[0] || 'Unknown',
+          objectHit: parts[1] || 'Unknown',
+          impactForce: parseFloat(parts[2]) || 0,
+          collisionNumber: parseInt(parts[3]) || 1
+        };
+      } else {
+        // JSON format
+        data = typeof collisionData === 'string' ? JSON.parse(collisionData) : collisionData;
+      }
       
       // Update collision count
       this.sessionData.collisionCount = (this.sessionData.collisionCount || 0) + 1;
@@ -227,9 +226,9 @@ class UnityFirebaseBridge {
         collisionType: data.type || 'Unknown',
         objectHit: data.objectHit || 'Unknown',
         impactForce: data.impactForce || 0,
-        damage: data.damage || 0,
+        damage: this.calculateDamage(data.impactForce),
         location: data.location || 'Unknown',
-        collisionNumber: this.sessionData.collisionCount,
+        collisionNumber: data.collisionNumber || this.sessionData.collisionCount,
         timestamp: serverTimestamp(),
         websiteUrl: window.location.href,
         sessionId: this.getSessionId()
@@ -247,7 +246,7 @@ class UnityFirebaseBridge {
       
       // Notify Unity
       if (this.unityInstance) {
-        this.unityInstance.SendMessage('GameManager', 'OnCollisionSaved', 'success');
+        this.unityInstance.SendMessage('SimpleGameDataManager', 'OnCollisionSaved', 'success');
       }
       
       return { success: true, id: docRef.id };
@@ -466,6 +465,30 @@ class UnityFirebaseBridge {
       sessionStorage.setItem('unity_session_id', sessionId);
     }
     return sessionId;
+  }
+
+  // Calculate violation severity based on speed and type
+  calculateSeverity(speed, violationType) {
+    if (violationType && violationType.toLowerCase().includes('speeding')) {
+      if (speed > 80) return 'High';
+      if (speed > 65) return 'Medium';
+      return 'Low';
+    }
+    if (violationType && violationType.toLowerCase().includes('red light')) {
+      return 'High';
+    }
+    if (violationType && violationType.toLowerCase().includes('stop sign')) {
+      return 'Medium';
+    }
+    return 'Medium';
+  }
+
+  // Calculate damage based on impact force
+  calculateDamage(impactForce) {
+    if (impactForce > 50) return 100; // Total damage
+    if (impactForce > 25) return 75;  // Major damage
+    if (impactForce > 10) return 50;  // Moderate damage
+    return 25; // Minor damage
   }
 }
 
