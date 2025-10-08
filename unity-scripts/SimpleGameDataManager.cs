@@ -20,16 +20,54 @@ public class SimpleGameDataManager : MonoBehaviour
         StartCoroutine(InitializeFirebase());
     }
     
+    void Awake()
+    {
+        // Ensure this GameObject persists across scenes
+        DontDestroyOnLoad(gameObject);
+    }
+    
     private IEnumerator InitializeFirebase()
     {
         // Wait for JavaScript bridge to be ready
         yield return new WaitForSeconds(3f);
         
+        // Initialize the JavaScript bridge
+        CallJavaScript("window.unityFirebaseBridge.initializeBridge", "");
+        
+        yield return new WaitForSeconds(1f);
+        
+        // Set Unity instance reference in JavaScript
+        CallJavaScript("window.unityFirebaseBridge.setUnityInstance", "");
+        
+        yield return new WaitForSeconds(0.5f);
+        
         isFirebaseReady = true;
         LogMessage("Firebase bridge ready for game data");
         
-        // Test the connection
+        // Test the connection with real data
         TestConnection();
+        
+        // Auto-generate some test data to verify system works
+        yield return new WaitForSeconds(2f);
+        GenerateTestData();
+    }
+    
+    private void GenerateTestData()
+    {
+        LogMessage("Generating test data to verify Firebase connection...");
+        
+        // Send test data
+        RecordViolation("Auto Test Violation", 65f, "Test Location");
+        
+        // Wait a bit then send more
+        Invoke(nameof(SendMoreTestData), 1f);
+    }
+    
+    private void SendMoreTestData()
+    {
+        RecordCollision("Auto Test Collision", "Test Object", 20f);
+        SaveProgress(1, 1000, 25f, 60f);
+        LogMessage("Test data generation complete - check Firestore console!");
     }
     
     private void TestConnection()

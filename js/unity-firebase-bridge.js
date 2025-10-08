@@ -30,10 +30,30 @@ class UnityFirebaseBridge {
     console.log('✅ Unity Firebase Bridge initialized successfully');
     console.log('🎯 Ready to receive Unity calls');
     
-    // Test communication disabled - waiting for real Unity integration
-    // setTimeout(() => this.testCommunication(), 2000);
+    return true;
+  }
+
+  // Initialize bridge without Unity instance (for Unity to call)
+  async initializeBridge() {
+    this.db = window.firebaseDB;
+    
+    if (!this.db) {
+      console.error('❌ Firebase DB not available');
+      return false;
+    }
+
+    this.setupUnityCallbacks();
+    this.isInitialized = true;
+    console.log('✅ Unity Firebase Bridge initialized successfully');
+    console.log('🎯 Ready to receive Unity calls');
     
     return true;
+  }
+
+  // Set Unity instance reference
+  setUnityInstance(unityInstance) {
+    this.unityInstance = unityInstance;
+    console.log('✅ Unity instance reference set');
   }
 
 
