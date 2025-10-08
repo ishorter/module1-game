@@ -29,7 +29,55 @@ class UnityFirebaseBridge {
     this.isInitialized = true;
     console.log('✅ Unity Firebase Bridge initialized successfully');
     console.log('🎯 Ready to receive Unity calls');
+    
+    // Test communication after a short delay
+    setTimeout(() => this.testCommunication(), 2000);
+    
     return true;
+  }
+
+  // Test C# ↔ JavaScript communication
+  testCommunication() {
+    console.log('🧪 FIREBASE: Testing C# ↔ JavaScript communication...');
+    
+    if (this.unityInstance) {
+      console.log('✅ FIREBASE: Unity instance available for communication');
+      
+      // Test a simple call to Unity
+      try {
+        this.unityInstance.SendMessage('GameDataManager', 'TestCommunication', 'success');
+        console.log('📡 FIREBASE: Test message sent to Unity C#');
+      } catch (error) {
+        console.error('❌ FIREBASE: Error sending test message to Unity:', error);
+      }
+    } else {
+      console.warn('⚠️ FIREBASE: Unity instance not available for communication');
+    }
+    
+    // Test JavaScript functions directly
+    console.log('🧪 FIREBASE: Testing JavaScript functions...');
+    try {
+      // Test saveProgress
+      const testProgress = JSON.stringify({
+        level: 1,
+        score: 1000,
+        completion: 50,
+        timeSpent: 120
+      });
+      this.handleProgress(testProgress);
+      
+      // Test recordViolation
+      const testViolation = JSON.stringify({
+        type: 'Speeding',
+        speed: 75,
+        location: 'Highway'
+      });
+      this.handleViolation(testViolation);
+      
+      console.log('✅ FIREBASE: JavaScript functions tested successfully');
+    } catch (error) {
+      console.error('❌ FIREBASE: Error testing JavaScript functions:', error);
+    }
   }
 
   // Generate unique user ID for anonymous tracking

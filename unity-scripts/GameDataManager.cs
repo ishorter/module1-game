@@ -364,5 +364,20 @@ public class GameDataManager : MonoBehaviour
         OnDataError?.Invoke(error);
     }
     
+    /// <summary>
+    /// Test communication from JavaScript
+    /// </summary>
+    public void TestCommunication(string message)
+    {
+        LogMessage($"✅ C# ↔ JavaScript communication successful: {message}");
+        
+        // Test sending data back to JavaScript
+        if (isFirebaseReady)
+        {
+            RecordViolation("Test Violation", 65f, "Test Location");
+            LogMessage("📡 Test violation sent to JavaScript");
+        }
+    }
+    
     #endregion
 }
