@@ -30,10 +30,57 @@ class UnityFirebaseBridge {
     console.log('✅ Unity Firebase Bridge initialized successfully');
     console.log('🎯 Ready to receive Unity calls');
     
-    // Test communication disabled - waiting for real Unity integration
-    // setTimeout(() => this.testCommunication(), 2000);
+    // Generate test data to verify Firestore connection works
+    setTimeout(() => this.generateTestData(), 3000);
     
     return true;
+  }
+
+  // Generate test data to verify Firestore connection works
+  async generateTestData() {
+    if (!this.isInitialized || !this.db) return;
+    
+    console.log('🧪 FIREBASE: Generating test data to verify connection...');
+    
+    try {
+      // Test violation data
+      const testViolation = {
+        userId: this.userId,
+        sessionId: this.getSessionId(),
+        gameId: 'DriverEdSimulator_Module1A',
+        violationType: 'Test Violation',
+        speed: 65,
+        location: 'Test Location',
+        severity: 'Low',
+        timestamp: serverTimestamp(),
+        websiteUrl: window.location.href
+      };
+      
+      // Test progress data
+      const testProgress = {
+        userId: this.userId,
+        sessionId: this.getSessionId(),
+        gameId: 'DriverEdSimulator_Module1A',
+        level: 1,
+        score: 1000,
+        completion: 25,
+        timeSpent: 60,
+        timestamp: serverTimestamp(),
+        websiteUrl: window.location.href
+      };
+      
+      // Save test data
+      const violationRef = await addDoc(collection(this.db, 'violations'), testViolation);
+      const progressRef = await addDoc(collection(this.db, 'gameProgress'), testProgress);
+      
+      console.log('✅ FIREBASE: Test data generated and saved successfully!');
+      console.log('📊 FIREBASE: Violation ID:', violationRef.id);
+      console.log('📊 FIREBASE: Progress ID:', progressRef.id);
+      console.log('🎯 FIREBASE: Check your Firestore console to see the data!');
+      
+    } catch (error) {
+      console.error('❌ FIREBASE: Error generating test data:', error);
+    }
   }
 
   // Test C# ↔ JavaScript communication (DISABLED - Real game data only)
