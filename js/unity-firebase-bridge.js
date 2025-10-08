@@ -34,21 +34,53 @@ class UnityFirebaseBridge {
     return userId;
   }
 
-  // Setup Unity C# callbacks
-  setupUnityCallbacks() {
-    // Expose methods to Unity C# via SendMessage
-    window.UnityFirebase = {
-      saveProgress: (progressData) => this.saveProgress(progressData),
-      loadProgress: () => this.loadProgress(),
-      saveScore: (scoreData) => this.saveScore(scoreData),
-      saveAchievement: (achievementData) => this.saveAchievement(achievementData),
-      saveViolation: (violationData) => this.saveViolation(violationData),
-      saveCollision: (collisionData) => this.saveCollision(collisionData),
-      saveDrivingEvent: (eventData) => this.saveDrivingEvent(eventData),
-      saveSessionData: (sessionData) => this.saveSessionData(sessionData),
-      getUserStats: () => this.getUserStats()
-    };
-  }
+    // Setup Unity C# callbacks
+    setupUnityCallbacks() {
+      console.log('🔧 FIREBASE: Setting up Unity callbacks...');
+      
+      // Expose methods to Unity C# via SendMessage
+      window.UnityFirebase = {
+        saveProgress: (progressData) => {
+          console.log('🎯 FIREBASE: saveProgress called from Unity:', progressData);
+          this.saveProgress(progressData);
+        },
+        loadProgress: () => {
+          console.log('🎯 FIREBASE: loadProgress called from Unity');
+          this.loadProgress();
+        },
+        saveScore: (scoreData) => {
+          console.log('🎯 FIREBASE: saveScore called from Unity:', scoreData);
+          this.saveScore(scoreData);
+        },
+        saveAchievement: (achievementData) => {
+          console.log('🎯 FIREBASE: saveAchievement called from Unity:', achievementData);
+          this.saveAchievement(achievementData);
+        },
+        saveViolation: (violationData) => {
+          console.log('🎯 FIREBASE: saveViolation called from Unity:', violationData);
+          this.saveViolation(violationData);
+        },
+        saveCollision: (collisionData) => {
+          console.log('🎯 FIREBASE: saveCollision called from Unity:', collisionData);
+          this.saveCollision(collisionData);
+        },
+        saveDrivingEvent: (eventData) => {
+          console.log('🎯 FIREBASE: saveDrivingEvent called from Unity:', eventData);
+          this.saveDrivingEvent(eventData);
+        },
+        saveSessionData: (sessionData) => {
+          console.log('🎯 FIREBASE: saveSessionData called from Unity:', sessionData);
+          this.saveSessionData(sessionData);
+        },
+        getUserStats: () => {
+          console.log('🎯 FIREBASE: getUserStats called from Unity');
+          this.getUserStats();
+        }
+      };
+      
+      console.log('✅ FIREBASE: Unity callbacks set up successfully');
+      console.log('🔍 FIREBASE: Available methods:', Object.keys(window.UnityFirebase));
+    }
 
   // Save game progress to Firestore
   async saveProgress(progressData) {
