@@ -345,6 +345,65 @@ class UnityFirebaseBridge {
     }
     return sessionId;
   }
+
+  // Test Firebase connection and data storage
+  async testFirebaseConnection() {
+    console.log('🧪 FIREBASE TEST: Starting Firebase connection test...');
+    
+    if (!this.isInitialized) {
+      console.error('❌ FIREBASE TEST: Bridge not initialized');
+      return;
+    }
+
+    try {
+      // Test 1: Save test progress data
+      console.log('🧪 FIREBASE TEST: Testing progress save...');
+      const testProgressData = JSON.stringify({
+        level: 1,
+        score: 1000,
+        completion: 50,
+        timeSpent: 120
+      });
+      await this.saveProgress(testProgressData);
+
+      // Test 2: Save test violation data
+      console.log('🧪 FIREBASE TEST: Testing violation save...');
+      const testViolationData = JSON.stringify({
+        type: 'Speeding',
+        severity: 'Medium',
+        location: 'Highway',
+        speed: 75
+      });
+      await this.saveViolation(testViolationData);
+
+      // Test 3: Save test collision data
+      console.log('🧪 FIREBASE TEST: Testing collision save...');
+      const testCollisionData = JSON.stringify({
+        type: 'Rear End',
+        damage: 'Minor',
+        location: 'Intersection'
+      });
+      await this.saveCollision(testCollisionData);
+
+      // Test 4: Save test session data
+      console.log('🧪 FIREBASE TEST: Testing session data save...');
+      const testSessionData = JSON.stringify({
+        playTime: 300,
+        distanceDriven: 5.2,
+        maxSpeed: 65,
+        violationsCount: 2,
+        collisionsCount: 1
+      });
+      await this.saveSessionData(testSessionData);
+
+      console.log('✅ FIREBASE TEST: All tests completed successfully!');
+      console.log('📊 FIREBASE TEST: Check Firebase Console to see the test data');
+      console.log('🔗 FIREBASE TEST: Visit: https://console.firebase.google.com/');
+      
+    } catch (error) {
+      console.error('❌ FIREBASE TEST: Test failed:', error);
+    }
+  }
 }
 
 // Initialize bridge
