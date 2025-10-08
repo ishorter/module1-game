@@ -1,12 +1,23 @@
 {
   "version": 2,
-  "rewrites": [
-    {
-      "source": "/Build/Module1A.framework.js",
-      "destination": "/Build/Module1A.framework.js.gz"
-    }
-  ],
   "headers": [
+    {
+      "source": "/Build/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, HEAD, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Content-Encoding"
+        }
+      ]
+    },
     {
       "source": "/Build/Module1A.loader.js",
       "headers": [
@@ -16,32 +27,7 @@
         },
         {
           "key": "Cache-Control",
-          "value": "public, max-age=31536000"
-        }
-      ]
-    },
-    {
-      "source": "/Build/Module1A.data.gz",
-      "headers": [
-        {
-          "key": "Content-Type",
-          "value": "application/octet-stream"
-        },
-        {
-          "key": "Content-Encoding",
-          "value": "gzip"
-        },
-        {
-          "key": "Accept-Encoding",
-          "value": "gzip"
-        },
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=31536000"
-        },
-        {
-          "key": "Access-Control-Allow-Origin",
-          "value": "*"
+          "value": "no-cache, no-store, must-revalidate"
         }
       ]
     },
@@ -57,16 +43,25 @@
           "value": "gzip"
         },
         {
-          "key": "Accept-Encoding",
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/Build/Module1A.data.gz",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/octet-stream"
+        },
+        {
+          "key": "Content-Encoding",
           "value": "gzip"
         },
         {
           "key": "Cache-Control",
-          "value": "public, max-age=31536000"
-        },
-        {
-          "key": "Access-Control-Allow-Origin",
-          "value": "*"
+          "value": "no-cache, no-store, must-revalidate"
         }
       ]
     },
@@ -82,47 +77,8 @@
           "value": "gzip"
         },
         {
-          "key": "Accept-Encoding",
-          "value": "gzip"
-        },
-        {
           "key": "Cache-Control",
-          "value": "public, max-age=31536000"
-        },
-        {
-          "key": "Access-Control-Allow-Origin",
-          "value": "*"
-        }
-      ]
-    },
-    {
-      "source": "/TemplateData/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=31536000"
-        }
-      ]
-    },
-    {
-      "source": "/js/(.*)",
-      "headers": [
-        {
-          "key": "Content-Type",
-          "value": "application/javascript"
-        }
-      ]
-    },
-    {
-      "source": "/(.*)",
-      "headers": [
-        {
-          "key": "Cross-Origin-Embedder-Policy",
-          "value": "require-corp"
-        },
-        {
-          "key": "Cross-Origin-Opener-Policy", 
-          "value": "same-origin"
+          "value": "no-cache, no-store, must-revalidate"
         }
       ]
     }
