@@ -7,6 +7,12 @@ class UnityFirebaseBridge {
     this.db = null;
     this.userId = this.generateUserId();
     this.isInitialized = false;
+    this.sessionData = {
+      startTime: Date.now(),
+      violations: [],
+      collisions: [],
+      progress: []
+    };
   }
 
   // Initialize bridge with Unity instance
@@ -15,13 +21,15 @@ class UnityFirebaseBridge {
     this.db = window.firebaseDB;
     
     if (!this.db) {
-      console.error('Firebase DB not available');
-      return;
+      console.error('❌ Firebase DB not available');
+      return false;
     }
 
     this.setupUnityCallbacks();
     this.isInitialized = true;
-    console.log('Unity Firebase Bridge initialized');
+    console.log('✅ Unity Firebase Bridge initialized successfully');
+    console.log('🎯 Ready to receive Unity calls');
+    return true;
   }
 
   // Generate unique user ID for anonymous tracking
@@ -34,341 +42,292 @@ class UnityFirebaseBridge {
     return userId;
   }
 
-    // Setup Unity C# callbacks
-    setupUnityCallbacks() {
-      console.log('🔧 FIREBASE: Setting up Unity callbacks...');
+  // Setup Unity C# callbacks - Professional integration
+  setupUnityCallbacks() {
+    console.log('🔧 Setting up Unity callbacks...');
+    
+    // Expose methods to Unity C# via SendMessage
+    window.UnityFirebase = {
+      // Game Progress
+      saveProgress: (progressData) => this.handleProgress(progressData),
+      loadProgress: () => this.loadProgress(),
       
-      // Expose methods to Unity C# via SendMessage
-      window.UnityFirebase = {
-        saveProgress: (progressData) => {
-          console.log('🎯 FIREBASE: saveProgress called from Unity:', progressData);
-          this.saveProgress(progressData);
-        },
-        loadProgress: () => {
-          console.log('🎯 FIREBASE: loadProgress called from Unity');
-          this.loadProgress();
-        },
-        saveScore: (scoreData) => {
-          console.log('🎯 FIREBASE: saveScore called from Unity:', scoreData);
-          this.saveScore(scoreData);
-        },
-        saveAchievement: (achievementData) => {
-          console.log('🎯 FIREBASE: saveAchievement called from Unity:', achievementData);
-          this.saveAchievement(achievementData);
-        },
-        saveViolation: (violationData) => {
-          console.log('🎯 FIREBASE: saveViolation called from Unity:', violationData);
-          this.saveViolation(violationData);
-        },
-        saveCollision: (collisionData) => {
-          console.log('🎯 FIREBASE: saveCollision called from Unity:', collisionData);
-          this.saveCollision(collisionData);
-        },
-        saveDrivingEvent: (eventData) => {
-          console.log('🎯 FIREBASE: saveDrivingEvent called from Unity:', eventData);
-          this.saveDrivingEvent(eventData);
-        },
-        saveSessionData: (sessionData) => {
-          console.log('🎯 FIREBASE: saveSessionData called from Unity:', sessionData);
-          this.saveSessionData(sessionData);
-        },
-        getUserStats: () => {
-          console.log('🎯 FIREBASE: getUserStats called from Unity');
-          this.getUserStats();
-        }
-      };
+      // Driving Events
+      recordViolation: (violationData) => this.handleViolation(violationData),
+      recordCollision: (collisionData) => this.handleCollision(collisionData),
+      recordDrivingEvent: (eventData) => this.handleDrivingEvent(eventData),
       
-      console.log('✅ FIREBASE: Unity callbacks set up successfully');
-      console.log('🔍 FIREBASE: Available methods:', Object.keys(window.UnityFirebase));
-    }
+      // Session Management
+      startSession: () => this.startSession(),
+      endSession: () => this.endSession(),
+      updateSessionStats: (statsData) => this.updateSessionStats(statsData),
+      
+      // Analytics
+      getUserStats: () => this.getUserStats(),
+      getSessionData: () => this.getCurrentSessionData()
+    };
+    
+    console.log('✅ Unity callbacks ready:', Object.keys(window.UnityFirebase));
+  }
 
-  // Save game progress to Firestore
-  async saveProgress(progressData) {
-    if (!this.isInitialized || !this.db) {
-      console.error('Bridge not initialized');
-      return;
-    }
-
+  // Handle progress data from Unity
+  async handleProgress(progressData) {
     try {
+      const data = typeof progressData === 'string' ? JSON.parse(progressData) : progressData;
+      
       const progress = {
         userId: this.userId,
         gameId: 'DriverEdSimulator_Module1A',
-        progressData: JSON.parse(progressData),
+        level: data.level || 1,
+        score: data.score || 0,
+        completion: data.completion || 0,
+        timeSpent: data.timeSpent || 0,
         timestamp: serverTimestamp(),
         websiteUrl: window.location.href,
-        userAgent: navigator.userAgent,
         sessionId: this.getSessionId()
       };
 
-      await addDoc(collection(this.db, 'gameProgress'), progress);
+      console.log('🚀 FIREBASE: Saving progress:', progress);
+      const docRef = await addDoc(collection(this.db, 'gameProgress'), progress);
+      console.log('✅ FIREBASE: Progress saved with ID:', docRef.id);
       
       // Notify Unity of success
       if (this.unityInstance) {
         this.unityInstance.SendMessage('GameManager', 'OnProgressSaved', 'success');
       }
       
-      console.log('Progress saved successfully');
+      return { success: true, id: docRef.id };
     } catch (error) {
-      console.error('Error saving progress:', error);
+      console.error('❌ FIREBASE: Error saving progress:', error);
       if (this.unityInstance) {
         this.unityInstance.SendMessage('GameManager', 'OnProgressSaved', 'error');
       }
+      return { success: false, error: error.message };
     }
   }
 
-  // Load user progress from Firestore
-  async loadProgress() {
-    if (!this.isInitialized || !this.db) {
-      console.error('Bridge not initialized');
-      return;
-    }
-
+  // Handle violation data from Unity
+  async handleViolation(violationData) {
     try {
-      const q = query(
-        collection(this.db, 'gameProgress'),
-        where('userId', '==', this.userId),
-        where('gameId', '==', 'DriverEdSimulator_Module1A'),
-        orderBy('timestamp', 'desc'),
-        limit(1)
-      );
-
-      const querySnapshot = await getDocs(q);
-      let latestProgress = null;
-
-      querySnapshot.forEach((doc) => {
-        latestProgress = doc.data();
-      });
-
-      // Send progress data back to Unity
-      const progressJson = latestProgress ? JSON.stringify(latestProgress.progressData) : '{}';
+      const data = typeof violationData === 'string' ? JSON.parse(violationData) : violationData;
       
-      if (this.unityInstance) {
-        this.unityInstance.SendMessage('GameManager', 'OnProgressLoaded', progressJson);
-      }
-      
-      console.log('Progress loaded successfully');
-    } catch (error) {
-      console.error('Error loading progress:', error);
-      if (this.unityInstance) {
-        this.unityInstance.SendMessage('GameManager', 'OnProgressLoaded', '{}');
-      }
-    }
-  }
-
-  // Save high scores
-  async saveScore(scoreData) {
-    if (!this.isInitialized || !this.db) return;
-
-    try {
-      const score = {
-        userId: this.userId,
-        gameId: 'DriverEdSimulator_Module1A',
-        scoreData: JSON.parse(scoreData),
-        timestamp: serverTimestamp(),
-        websiteUrl: window.location.href,
-        sessionId: this.getSessionId()
-      };
-
-      await addDoc(collection(this.db, 'gameScores'), score);
-      
-      if (this.unityInstance) {
-        this.unityInstance.SendMessage('GameManager', 'OnScoreSaved', 'success');
-      }
-      
-      console.log('Score saved successfully');
-    } catch (error) {
-      console.error('Error saving score:', error);
-    }
-  }
-
-  // Save achievements
-  async saveAchievement(achievementData) {
-    if (!this.isInitialized || !this.db) return;
-
-    try {
-      const achievement = {
-        userId: this.userId,
-        gameId: 'DriverEdSimulator_Module1A',
-        achievementData: JSON.parse(achievementData),
-        timestamp: serverTimestamp(),
-        websiteUrl: window.location.href,
-        sessionId: this.getSessionId()
-      };
-
-      await addDoc(collection(this.db, 'achievements'), achievement);
-      
-      if (this.unityInstance) {
-        this.unityInstance.SendMessage('GameManager', 'OnAchievementSaved', 'success');
-      }
-      
-      console.log('Achievement saved successfully');
-    } catch (error) {
-      console.error('Error saving achievement:', error);
-    }
-  }
-
-  // Save traffic violations
-  async saveViolation(violationData) {
-    if (!this.isInitialized || !this.db) return;
-
-    try {
       const violation = {
         userId: this.userId,
         gameId: 'DriverEdSimulator_Module1A',
-        violationData: JSON.parse(violationData),
+        violationType: data.type || 'Unknown',
+        severity: data.severity || 'Medium',
+        speed: data.speed || 0,
+        location: data.location || 'Unknown',
         timestamp: serverTimestamp(),
         websiteUrl: window.location.href,
         sessionId: this.getSessionId()
       };
 
-      await addDoc(collection(this.db, 'violations'), violation);
+      console.log('🚨 FIREBASE: Saving violation:', violation);
+      const docRef = await addDoc(collection(this.db, 'violations'), violation);
+      console.log('✅ FIREBASE: Violation saved with ID:', docRef.id);
       
+      // Track in session
+      this.sessionData.violations.push(violation);
+      
+      // Notify Unity
       if (this.unityInstance) {
         this.unityInstance.SendMessage('GameManager', 'OnViolationSaved', 'success');
       }
       
-      console.log('Violation saved successfully');
+      return { success: true, id: docRef.id };
     } catch (error) {
-      console.error('Error saving violation:', error);
+      console.error('❌ FIREBASE: Error saving violation:', error);
+      return { success: false, error: error.message };
     }
   }
 
-  // Save collision events
-  async saveCollision(collisionData) {
-    if (!this.isInitialized || !this.db) return;
-
+  // Handle collision data from Unity
+  async handleCollision(collisionData) {
     try {
+      const data = typeof collisionData === 'string' ? JSON.parse(collisionData) : collisionData;
+      
       const collision = {
         userId: this.userId,
         gameId: 'DriverEdSimulator_Module1A',
-        collisionData: JSON.parse(collisionData),
+        collisionType: data.type || 'Unknown',
+        objectHit: data.objectHit || 'Unknown',
+        impactForce: data.impactForce || 0,
+        damage: data.damage || 0,
+        location: data.location || 'Unknown',
         timestamp: serverTimestamp(),
         websiteUrl: window.location.href,
         sessionId: this.getSessionId()
       };
 
-      await addDoc(collection(this.db, 'collisions'), collision);
+      console.log('💥 FIREBASE: Saving collision:', collision);
+      const docRef = await addDoc(collection(this.db, 'collisions'), collision);
+      console.log('✅ FIREBASE: Collision saved with ID:', docRef.id);
       
+      // Track in session
+      this.sessionData.collisions.push(collision);
+      
+      // Notify Unity
       if (this.unityInstance) {
         this.unityInstance.SendMessage('GameManager', 'OnCollisionSaved', 'success');
       }
       
-      console.log('Collision saved successfully');
+      return { success: true, id: docRef.id };
     } catch (error) {
-      console.error('Error saving collision:', error);
+      console.error('❌ FIREBASE: Error saving collision:', error);
+      return { success: false, error: error.message };
     }
   }
 
-  // Save general driving events
-  async saveDrivingEvent(eventData) {
-    if (!this.isInitialized || !this.db) return;
-
+  // Handle driving events from Unity
+  async handleDrivingEvent(eventData) {
     try {
+      const data = typeof eventData === 'string' ? JSON.parse(eventData) : eventData;
+      
       const event = {
         userId: this.userId,
         gameId: 'DriverEdSimulator_Module1A',
-        eventData: JSON.parse(eventData),
+        eventType: data.type || 'Unknown',
+        value: data.value || 0,
+        position: data.position || {},
         timestamp: serverTimestamp(),
         websiteUrl: window.location.href,
         sessionId: this.getSessionId()
       };
 
-      await addDoc(collection(this.db, 'drivingEvents'), event);
+      console.log('🚗 FIREBASE: Saving driving event:', event);
+      const docRef = await addDoc(collection(this.db, 'drivingEvents'), event);
+      console.log('✅ FIREBASE: Driving event saved with ID:', docRef.id);
       
-      if (this.unityInstance) {
-        this.unityInstance.SendMessage('GameManager', 'OnDrivingEventSaved', 'success');
-      }
-      
-      console.log('Driving event saved successfully');
+      return { success: true, id: docRef.id };
     } catch (error) {
-      console.error('Error saving driving event:', error);
+      console.error('❌ FIREBASE: Error saving driving event:', error);
+      return { success: false, error: error.message };
     }
   }
 
-  // Save complete session data
-  async saveSessionData(sessionData) {
-    if (!this.isInitialized || !this.db) return;
+  // Start new session
+  startSession() {
+    this.sessionData = {
+      startTime: Date.now(),
+      violations: [],
+      collisions: [],
+      progress: []
+    };
+    console.log('🎮 FIREBASE: New session started');
+    return { success: true, sessionId: this.getSessionId() };
+  }
 
+  // End session and save summary
+  async endSession() {
     try {
-      const session = {
+      const sessionSummary = {
         userId: this.userId,
         gameId: 'DriverEdSimulator_Module1A',
-        sessionData: JSON.parse(sessionData),
+        sessionId: this.getSessionId(),
+        startTime: this.sessionData.startTime,
+        endTime: Date.now(),
+        duration: Date.now() - this.sessionData.startTime,
+        violationsCount: this.sessionData.violations.length,
+        collisionsCount: this.sessionData.collisions.length,
+        progressCount: this.sessionData.progress.length,
         timestamp: serverTimestamp(),
-        websiteUrl: window.location.href,
-        sessionId: this.getSessionId()
+        websiteUrl: window.location.href
       };
 
-      await addDoc(collection(this.db, 'sessions'), session);
+      console.log('📊 FIREBASE: Saving session summary:', sessionSummary);
+      const docRef = await addDoc(collection(this.db, 'sessions'), sessionSummary);
+      console.log('✅ FIREBASE: Session saved with ID:', docRef.id);
       
-      if (this.unityInstance) {
-        this.unityInstance.SendMessage('GameManager', 'OnSessionDataSaved', 'success');
-      }
-      
-      console.log('Session data saved successfully');
+      return { success: true, id: docRef.id, summary: sessionSummary };
     } catch (error) {
-      console.error('Error saving session data:', error);
+      console.error('❌ FIREBASE: Error saving session:', error);
+      return { success: false, error: error.message };
     }
   }
 
-  // Get user statistics for external websites
-  async getUserStats() {
-    if (!this.isInitialized || !this.db) return null;
-
+  // Update session statistics
+  updateSessionStats(statsData) {
     try {
-      const progressQuery = query(
+      const data = typeof statsData === 'string' ? JSON.parse(statsData) : statsData;
+      
+      this.sessionData.stats = {
+        ...this.sessionData.stats,
+        ...data,
+        lastUpdate: Date.now()
+      };
+      
+      console.log('📈 FIREBASE: Session stats updated:', this.sessionData.stats);
+      return { success: true };
+    } catch (error) {
+      console.error('❌ FIREBASE: Error updating session stats:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Get current session data
+  getCurrentSessionData() {
+    return {
+      sessionId: this.getSessionId(),
+      startTime: this.sessionData.startTime,
+      duration: Date.now() - this.sessionData.startTime,
+      violationsCount: this.sessionData.violations.length,
+      collisionsCount: this.sessionData.collisions.length,
+      progressCount: this.sessionData.progress.length,
+      stats: this.sessionData.stats || {}
+    };
+  }
+
+  // Load user progress
+  async loadProgress() {
+    try {
+      const q = query(
         collection(this.db, 'gameProgress'),
         where('userId', '==', this.userId),
-        where('gameId', '==', 'DriverEdSimulator_Module1A')
+        orderBy('timestamp', 'desc'),
+        limit(1)
       );
-
-      const scoreQuery = query(
-        collection(this.db, 'gameScores'),
-        where('userId', '==', this.userId),
-        where('gameId', '==', 'DriverEdSimulator_Module1A')
-      );
-
-      const [progressSnapshot, scoreSnapshot] = await Promise.all([
-        getDocs(progressQuery),
-        getDocs(scoreQuery)
-      ]);
-
-      return {
-        totalProgressSaves: progressSnapshot.size,
-        totalScores: scoreSnapshot.size,
-        lastPlayed: this.getLastPlayedDate(progressSnapshot),
-        highScore: this.getHighScore(scoreSnapshot),
-        userId: this.userId
-      };
+      
+      const querySnapshot = await getDocs(q);
+      if (!querySnapshot.empty) {
+        const latestProgress = querySnapshot.docs[0].data();
+        console.log('📥 FIREBASE: Latest progress loaded:', latestProgress);
+        return { success: true, data: latestProgress };
+      } else {
+        console.log('📥 FIREBASE: No progress found for user');
+        return { success: true, data: null };
+      }
     } catch (error) {
-      console.error('Error getting user stats:', error);
-      return null;
+      console.error('❌ FIREBASE: Error loading progress:', error);
+      return { success: false, error: error.message };
     }
   }
 
-  getLastPlayedDate(snapshot) {
-    let latestDate = null;
-    snapshot.forEach(doc => {
-      const data = doc.data();
-      if (!latestDate || data.timestamp > latestDate) {
-        latestDate = data.timestamp;
-      }
-    });
-    return latestDate;
+  // Get user statistics
+  async getUserStats() {
+    try {
+      const [progressQuery, violationsQuery, collisionsQuery] = await Promise.all([
+        getDocs(query(collection(this.db, 'gameProgress'), where('userId', '==', this.userId))),
+        getDocs(query(collection(this.db, 'violations'), where('userId', '==', this.userId))),
+        getDocs(query(collection(this.db, 'collisions'), where('userId', '==', this.userId)))
+      ]);
+
+      const stats = {
+        totalProgress: progressQuery.size,
+        totalViolations: violationsQuery.size,
+        totalCollisions: collisionsQuery.size,
+        userId: this.userId
+      };
+
+      console.log('📊 FIREBASE: User stats loaded:', stats);
+      return { success: true, data: stats };
+    } catch (error) {
+      console.error('❌ FIREBASE: Error loading user stats:', error);
+      return { success: false, error: error.message };
+    }
   }
 
-  getHighScore(snapshot) {
-    let highScore = 0;
-    snapshot.forEach(doc => {
-      const data = doc.data();
-      const score = data.scoreData?.score || 0;
-      if (score > highScore) {
-        highScore = score;
-      }
-    });
-    return highScore;
-  }
-
+  // Generate session ID
   getSessionId() {
     let sessionId = sessionStorage.getItem('unity_session_id');
     if (!sessionId) {
@@ -377,67 +336,8 @@ class UnityFirebaseBridge {
     }
     return sessionId;
   }
-
-  // Test Firebase connection and data storage
-  async testFirebaseConnection() {
-    console.log('🧪 FIREBASE TEST: Starting Firebase connection test...');
-    
-    if (!this.isInitialized) {
-      console.error('❌ FIREBASE TEST: Bridge not initialized');
-      return;
-    }
-
-    try {
-      // Test 1: Save test progress data
-      console.log('🧪 FIREBASE TEST: Testing progress save...');
-      const testProgressData = JSON.stringify({
-        level: 1,
-        score: 1000,
-        completion: 50,
-        timeSpent: 120
-      });
-      await this.saveProgress(testProgressData);
-
-      // Test 2: Save test violation data
-      console.log('🧪 FIREBASE TEST: Testing violation save...');
-      const testViolationData = JSON.stringify({
-        type: 'Speeding',
-        severity: 'Medium',
-        location: 'Highway',
-        speed: 75
-      });
-      await this.saveViolation(testViolationData);
-
-      // Test 3: Save test collision data
-      console.log('🧪 FIREBASE TEST: Testing collision save...');
-      const testCollisionData = JSON.stringify({
-        type: 'Rear End',
-        damage: 'Minor',
-        location: 'Intersection'
-      });
-      await this.saveCollision(testCollisionData);
-
-      // Test 4: Save test session data
-      console.log('🧪 FIREBASE TEST: Testing session data save...');
-      const testSessionData = JSON.stringify({
-        playTime: 300,
-        distanceDriven: 5.2,
-        maxSpeed: 65,
-        violationsCount: 2,
-        collisionsCount: 1
-      });
-      await this.saveSessionData(testSessionData);
-
-      console.log('✅ FIREBASE TEST: All tests completed successfully!');
-      console.log('📊 FIREBASE TEST: Check Firebase Console to see the test data');
-      console.log('🔗 FIREBASE TEST: Visit: https://console.firebase.google.com/');
-      
-    } catch (error) {
-      console.error('❌ FIREBASE TEST: Test failed:', error);
-    }
-  }
 }
 
 // Initialize bridge
 window.unityFirebaseBridge = new UnityFirebaseBridge();
-console.log('Unity Firebase Bridge created');
+console.log('Unity Firebase Bridge created - Professional Integration Ready');
