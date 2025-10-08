@@ -159,6 +159,9 @@ class UnityFirebaseBridge {
     try {
       const data = typeof violationData === 'string' ? JSON.parse(violationData) : violationData;
       
+      // Update violation count
+      this.sessionData.violationCount = (this.sessionData.violationCount || 0) + 1;
+      
       const violation = {
         userId: this.userId,
         gameId: 'DriverEdSimulator_Module1A',
@@ -166,6 +169,7 @@ class UnityFirebaseBridge {
         severity: data.severity || 'Medium',
         speed: data.speed || 0,
         location: data.location || 'Unknown',
+        violationNumber: this.sessionData.violationCount,
         timestamp: serverTimestamp(),
         websiteUrl: window.location.href,
         sessionId: this.getSessionId()
@@ -177,6 +181,9 @@ class UnityFirebaseBridge {
       
       // Track in session
       this.sessionData.violations.push(violation);
+      
+      // Auto-update session stats
+      this.updateSessionStats();
       
       // Notify Unity
       if (this.unityInstance) {
@@ -195,6 +202,9 @@ class UnityFirebaseBridge {
     try {
       const data = typeof collisionData === 'string' ? JSON.parse(collisionData) : collisionData;
       
+      // Update collision count
+      this.sessionData.collisionCount = (this.sessionData.collisionCount || 0) + 1;
+      
       const collision = {
         userId: this.userId,
         gameId: 'DriverEdSimulator_Module1A',
@@ -203,6 +213,7 @@ class UnityFirebaseBridge {
         impactForce: data.impactForce || 0,
         damage: data.damage || 0,
         location: data.location || 'Unknown',
+        collisionNumber: this.sessionData.collisionCount,
         timestamp: serverTimestamp(),
         websiteUrl: window.location.href,
         sessionId: this.getSessionId()
@@ -214,6 +225,9 @@ class UnityFirebaseBridge {
       
       // Track in session
       this.sessionData.collisions.push(collision);
+      
+      // Auto-update session stats
+      this.updateSessionStats();
       
       // Notify Unity
       if (this.unityInstance) {
@@ -295,20 +309,73 @@ class UnityFirebaseBridge {
   }
 
   // Update session statistics
-  updateSessionStats(statsData) {
+  updateSessionStats(statsData = null) {
     try {
-      const data = typeof statsData === 'string' ? JSON.parse(statsData) : statsData;
+      if (statsData) {
+        const data = typeof statsData === 'string' ? JSON.parse(statsData) : statsData;
+        this.sessionData.stats = {
+          ...this.sessionData.stats,
+          ...data,
+          lastUpdate: Date.now()
+        };
+      }
       
-      this.sessionData.stats = {
-        ...this.sessionData.stats,
-        ...data,
-        lastUpdate: Date.now()
-      };
+      // Auto-save session data every few events
+      const shouldAutoSave = this.shouldAutoSaveSession();
+      if (shouldAutoSave) {
+        this.saveSessionData();
+      }
       
       console.log('📈 FIREBASE: Session stats updated:', this.sessionData.stats);
       return { success: true };
     } catch (error) {
       console.error('❌ FIREBASE: Error updating session stats:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Determine if session should be auto-saved
+  shouldAutoSaveSession() {
+    const violations = this.sessionData.violationCount || 0;
+    const collisions = this.sessionData.collisionCount || 0;
+    const lastSave = this.sessionData.lastAutoSave || 0;
+    const now = Date.now();
+    
+    // Auto-save every 5 violations, 3 collisions, or every 5 minutes
+    return violations > 0 && violations % 5 === 0 ||
+           collisions > 0 && collisions % 3 === 0 ||
+           now - lastSave > 300000; // 5 minutes
+  }
+
+  // Save session data to Firestore
+  async saveSessionData() {
+    try {
+      const sessionSummary = {
+        userId: this.userId,
+        gameId: 'DriverEdSimulator_Module1A',
+        sessionId: this.getSessionId(),
+        startTime: this.sessionData.startTime,
+        endTime: Date.now(),
+        duration: Date.now() - this.sessionData.startTime,
+        violationsCount: this.sessionData.violationCount || 0,
+        collisionsCount: this.sessionData.collisionCount || 0,
+        progressCount: this.sessionData.progress?.length || 0,
+        stats: this.sessionData.stats || {},
+        timestamp: serverTimestamp(),
+        websiteUrl: window.location.href,
+        autoSaved: true
+      };
+
+      console.log('📊 FIREBASE: Auto-saving session data:', sessionSummary);
+      const docRef = await addDoc(collection(this.db, 'sessions'), sessionSummary);
+      console.log('✅ FIREBASE: Session auto-saved with ID:', docRef.id);
+      
+      // Update last save time
+      this.sessionData.lastAutoSave = Date.now();
+      
+      return { success: true, id: docRef.id };
+    } catch (error) {
+      console.error('❌ FIREBASE: Error auto-saving session:', error);
       return { success: false, error: error.message };
     }
   }
