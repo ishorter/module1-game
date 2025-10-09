@@ -77,8 +77,8 @@ class UnityFirebaseBridge {
         this.unityInstance.SendMessage('FirebaseDataSender', 'OnFirebaseReady', 'connected');
       }
       
-      // Test data generation disabled - only real game data will be tracked
-      console.log('🎮 Real game data tracking enabled - no test data will be generated');
+      // Only real game data will be tracked - no test data generation
+      console.log('🎮 Real game data tracking enabled - ONLY real game events will be tracked');
       
       return true;
     } catch (error) {
@@ -96,10 +96,10 @@ class UnityFirebaseBridge {
     }
   }
 
-  // Test C# ↔ JavaScript communication (DISABLED - Real game data only)
-  testCommunication() {
-    console.log('🎮 FIREBASE: Real game data tracking enabled - test data disabled');
-    console.log('📡 FIREBASE: Waiting for Unity game events...');
+  // Real game data tracking only - no test functionality
+  checkRealDataStatus() {
+    console.log('🎮 FIREBASE: Real game data tracking active - ONLY real game events');
+    console.log('📡 FIREBASE: Waiting for real Unity game events...');
     
     if (this.unityInstance) {
       console.log('✅ FIREBASE: Unity instance available for real game data');
@@ -227,7 +227,11 @@ class UnityFirebaseBridge {
       let data;
       
       // Check if it's JSON or pipe-separated data
-      if (violationData.includes('|')) {
+      if (violationData.startsWith('{') && violationData.endsWith('}')) {
+        // JSON format (from game developer's system)
+        data = JSON.parse(violationData);
+        console.log('📊 FIREBASE: Received JSON violation data:', data);
+      } else if (violationData.includes('|')) {
         // Simple pipe-separated format: "type|speed|location|violationNumber"
         const parts = violationData.split('|');
         data = {
@@ -247,12 +251,13 @@ class UnityFirebaseBridge {
       const violation = {
         userId: this.userId,
         gameId: 'DriverEdSimulator_Module1A',
-        violationType: data.type || 'Unknown',
-        severity: this.calculateSeverity(data.speed, data.type),
+        violationType: data.violationType || data.type || 'Unknown',
+        severity: this.calculateSeverity(data.speed, data.violationType || data.type),
         speed: data.speed || 0,
         location: data.location || 'Unknown',
         violationNumber: data.violationNumber || this.sessionData.violationCount,
         timestamp: serverTimestamp(),
+        originalTimestamp: data.timestamp || new Date().toISOString(),
         websiteUrl: window.location.href,
         sessionId: this.getSessionId()
       };
@@ -285,7 +290,11 @@ class UnityFirebaseBridge {
       let data;
       
       // Check if it's JSON or pipe-separated data
-      if (collisionData.includes('|')) {
+      if (collisionData.startsWith('{') && collisionData.endsWith('}')) {
+        // JSON format (from game developer's system)
+        data = JSON.parse(collisionData);
+        console.log('📊 FIREBASE: Received JSON collision data:', data);
+      } else if (collisionData.includes('|')) {
         // Simple pipe-separated format: "type|objectHit|impactForce|collisionNumber"
         const parts = collisionData.split('|');
         data = {
@@ -305,13 +314,14 @@ class UnityFirebaseBridge {
       const collision = {
         userId: this.userId,
         gameId: 'DriverEdSimulator_Module1A',
-        collisionType: data.type || 'Unknown',
+        collisionType: data.collisionType || data.type || 'Unknown',
         objectHit: data.objectHit || 'Unknown',
         impactForce: data.impactForce || 0,
         damage: this.calculateDamage(data.impactForce),
         location: data.location || 'Unknown',
         collisionNumber: data.collisionNumber || this.sessionData.collisionCount,
         timestamp: serverTimestamp(),
+        originalTimestamp: data.timestamp || new Date().toISOString(),
         websiteUrl: window.location.href,
         sessionId: this.getSessionId()
       };

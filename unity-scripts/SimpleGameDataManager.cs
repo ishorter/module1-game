@@ -38,6 +38,9 @@ public class SimpleGameDataManager : MonoBehaviour
     private Transform playerTransform;
     private Rigidbody playerRigidbody;
     
+    // Data queuing system
+    private System.Collections.Generic.Queue<string> dataQueue = new System.Collections.Generic.Queue<string>();
+    
     void Start()
     {
         // Find player/vehicle for real-time tracking
@@ -117,12 +120,12 @@ public class SimpleGameDataManager : MonoBehaviour
         // Set Firebase ready after a reasonable delay (fallback)
         yield return new WaitForSeconds(2f);
         
+        // Initialize real-time tracking IMMEDIATELY (don't wait for Firebase)
+        InitializeRealTimeTracking();
+        
         // Fallback: Set Firebase ready even if callback doesn't work
         isFirebaseReady = true;
         LogMessage("✅ Firebase ready (fallback initialization)");
-        
-        // Initialize real-time tracking
-        InitializeRealTimeTracking();
         
         // Test the connection
         TestConnection();
@@ -143,12 +146,42 @@ public class SimpleGameDataManager : MonoBehaviour
         {
             isFirebaseReady = true;
             LogMessage("✅ Firebase connection confirmed - ready for game data");
+            
+            // Process any queued data
+            ProcessQueuedData();
         }
         else if (status == "failed")
         {
             isFirebaseReady = false;
             LogMessage("❌ Firebase connection failed - check configuration");
         }
+    }
+    
+    /// <summary>
+    /// Process any queued data when Firebase becomes ready
+    /// </summary>
+    private void ProcessQueuedData()
+    {
+        if (dataQueue.Count == 0) return;
+        
+        LogMessage($"Processing {dataQueue.Count} queued data items...");
+        
+        while (dataQueue.Count > 0)
+        {
+            string queuedItem = dataQueue.Dequeue();
+            string[] parts = queuedItem.Split('|');
+            
+            if (parts.Length >= 2)
+            {
+                string methodName = parts[0];
+                string data = string.Join("|", parts, 1, parts.Length - 1);
+                
+                LogMessage($"Processing queued item: {methodName} with data: {data}");
+                CallJavaScript(methodName, data);
+            }
+        }
+        
+        LogMessage("✅ All queued data processed");
     }
     
     /// <summary>
@@ -278,6 +311,14 @@ public class SimpleGameDataManager : MonoBehaviour
         {
             LogMessage($"Error calling JavaScript method {methodName}: {e.Message}");
             LogMessage($"Stack trace: {e.StackTrace}");
+            
+            // If Firebase isn't ready, queue the data
+            if (!isFirebaseReady)
+            {
+                string queuedData = $"{methodName}|{data}";
+                dataQueue.Enqueue(queuedData);
+                LogMessage($"Data queued for later: {queuedData}");
+            }
         }
     }
     
@@ -313,18 +354,22 @@ public class SimpleGameDataManager : MonoBehaviour
     
     private void InitializeRealTimeTracking()
     {
-        if (!isFirebaseReady)
-        {
-            LogMessage("❌ Cannot start real-time tracking - Firebase not ready");
-            return;
-        }
-        
+        // Start tracking immediately, even if Firebase isn't ready yet
         sessionStartTime = Time.time;
         lastPosition = playerTransform ? playerTransform.position : Vector3.zero;
         isTracking = true;
         
         LogMessage("🎮 Real-time tracking session started");
         LogMessage("📊 Tracking: Speed violations, Collisions, Traffic violations, Level progress");
+        
+        if (isFirebaseReady)
+        {
+            LogMessage("✅ Firebase ready - data will be saved immediately");
+        }
+        else
+        {
+            LogMessage("⏳ Firebase not ready - data will be queued and saved when ready");
+        }
     }
     
     private void UpdateRealTimeTracking()
@@ -403,5 +448,46 @@ public class SimpleGameDataManager : MonoBehaviour
         LogMessage($"   Max Speed: {maxSpeed:F1} mph");
         LogMessage($"   Violations: {totalViolations}");
         LogMessage($"   Collisions: {totalCollisions}");
+        LogMessage($"   Firebase Ready: {isFirebaseReady}");
+        LogMessage($"   Tracking Active: {isTracking}");
+        LogMessage($"   Queued Data: {dataQueue.Count} items");
+    }
+    
+    // Force start tracking method
+    [ContextMenu("Force Start Real-Time Tracking")]
+    public void ForceStartTracking()
+    {
+        LogMessage("🚀 Force starting real-time tracking...");
+        
+        // Find player if not found
+        if (!playerTransform)
+        {
+            FindPlayer();
+        }
+        
+        // Start tracking immediately
+        InitializeRealTimeTracking();
+        
+        // Force Firebase ready
+        isFirebaseReady = true;
+        LogMessage("✅ Firebase forced ready - tracking active");
+    }
+    
+    // Force test data method
+    [ContextMenu("Force Test Real Data")]
+    public void ForceTestRealData()
+    {
+        LogMessage("🧪 Force testing real data tracking...");
+        
+        // Test violation
+        RecordViolation("Force Test Speeding", 85f, "Force Test Highway");
+        
+        // Test collision
+        RecordCollision("Force Test Vehicle", "Force Test Car", 35f);
+        
+        // Test progress
+        SaveProgress(1, 2000, 75f, 180f);
+        
+        LogMessage("✅ Force test data sent - check Firebase console");
     }
 }
