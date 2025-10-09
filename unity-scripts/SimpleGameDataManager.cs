@@ -4,20 +4,107 @@ using System.Collections;
 /// <summary>
 /// Simple Game Data Manager for Unity WebGL
 /// Sends data to Firebase without JSON serialization
+/// INCLUDES REAL-TIME AUTOMATIC TRACKING
 /// </summary>
 public class SimpleGameDataManager : MonoBehaviour
 {
     [Header("Firebase Integration")]
     [SerializeField] private bool enableFirebaseLogging = true;
     
+    [Header("Real-Time Tracking")]
+    [SerializeField] private bool enableRealTimeTracking = true;
+    [SerializeField] private float trackingUpdateInterval = 0.1f; // 10 times per second
+    [SerializeField] private float sessionSaveInterval = 30f; // Auto-save every 30 seconds
+    
+    [Header("Speed & Violation Settings")]
+    [SerializeField] private float speedLimit = 50f; // mph
+    [SerializeField] private float minViolationSpeed = 55f; // mph
+    [SerializeField] private float minCollisionForce = 5f;
+    
     private bool isFirebaseReady = false;
     private int totalViolations = 0;
     private int totalCollisions = 0;
     
+    // Real-time tracking variables
+    private float trackingTimer = 0f;
+    private float sessionSaveTimer = 0f;
+    private float sessionStartTime = 0f;
+    private float currentSpeed = 0f;
+    private float maxSpeed = 0f;
+    private Vector3 lastPosition;
+    private bool isTracking = false;
+    
+    // References
+    private Transform playerTransform;
+    private Rigidbody playerRigidbody;
+    
     void Start()
     {
+        // Find player/vehicle for real-time tracking
+        FindPlayer();
+        
         // Wait for Firebase to initialize
         StartCoroutine(InitializeFirebase());
+    }
+    
+    void Update()
+    {
+        if (!enableRealTimeTracking || !isTracking) return;
+        
+        // Update timers
+        trackingTimer += Time.deltaTime;
+        sessionSaveTimer += Time.deltaTime;
+        
+        // Real-time speed and position tracking
+        if (trackingTimer >= trackingUpdateInterval)
+        {
+            UpdateRealTimeTracking();
+            trackingTimer = 0f;
+        }
+        
+        // Auto-save session data
+        if (sessionSaveTimer >= sessionSaveInterval)
+        {
+            UpdateSessionStats();
+            sessionSaveTimer = 0f;
+        }
+    }
+    
+    void OnCollisionEnter(Collision collision)
+    {
+        if (!isTracking) return;
+        
+        // Calculate impact force
+        float impactForce = collision.relativeVelocity.magnitude;
+        
+        if (impactForce >= minCollisionForce)
+        {
+            // Record REAL collision automatically
+            string collisionType = DetermineCollisionType(collision);
+            RecordCollision(collisionType, collision.gameObject.name, impactForce);
+        }
+    }
+    
+    void OnTriggerEnter(Collider other)
+    {
+        if (!isTracking) return;
+        
+        // Detect REAL traffic violations automatically
+        if (other.CompareTag("RedLight") && currentSpeed > 5f)
+        {
+            RecordViolation("Red Light", currentSpeed, other.name);
+        }
+        
+        if (other.CompareTag("StopSign") && currentSpeed > 5f)
+        {
+            RecordViolation("Stop Sign", currentSpeed, other.name);
+        }
+        
+        // Detect REAL level progression automatically
+        if (other.CompareTag("Checkpoint") || other.CompareTag("FinishLine"))
+        {
+            SaveProgress(1, 1000, 100f, Time.time - sessionStartTime);
+        }
     }
     
     private IEnumerator InitializeFirebase()
@@ -33,6 +120,9 @@ public class SimpleGameDataManager : MonoBehaviour
         // Fallback: Set Firebase ready even if callback doesn't work
         isFirebaseReady = true;
         LogMessage("✅ Firebase ready (fallback initialization)");
+        
+        // Initialize real-time tracking
+        InitializeRealTimeTracking();
         
         // Test the connection
         TestConnection();
@@ -199,9 +289,119 @@ public class SimpleGameDataManager : MonoBehaviour
         }
     }
     
+    #region Real-Time Tracking Methods
+    
+    private void FindPlayer()
+    {
+        // Try to find player/vehicle
+        GameObject player = GameObject.FindGameObjectWithTag("Player");
+        if (!player) player = GameObject.FindGameObjectWithTag("Vehicle");
+        if (!player) player = GameObject.FindGameObjectWithTag("Car");
+        
+        if (player)
+        {
+            playerTransform = player.transform;
+            playerRigidbody = player.GetComponent<Rigidbody>();
+            LogMessage("✅ Player found for real-time tracking");
+        }
+        else
+        {
+            LogMessage("⚠️ No player found - using camera position");
+            playerTransform = Camera.main?.transform;
+        }
+    }
+    
+    private void InitializeRealTimeTracking()
+    {
+        if (!isFirebaseReady)
+        {
+            LogMessage("❌ Cannot start real-time tracking - Firebase not ready");
+            return;
+        }
+        
+        sessionStartTime = Time.time;
+        lastPosition = playerTransform ? playerTransform.position : Vector3.zero;
+        isTracking = true;
+        
+        LogMessage("🎮 Real-time tracking session started");
+        LogMessage("📊 Tracking: Speed violations, Collisions, Traffic violations, Level progress");
+    }
+    
+    private void UpdateRealTimeTracking()
+    {
+        if (!playerRigidbody) return;
+        
+        // Calculate current speed
+        currentSpeed = playerRigidbody.velocity.magnitude * 2.237f; // Convert m/s to mph
+        
+        // Update max speed
+        if (currentSpeed > maxSpeed)
+        {
+            maxSpeed = currentSpeed;
+        }
+        
+        // Calculate distance traveled
+        Vector3 currentPosition = playerTransform.position;
+        float distanceThisFrame = Vector3.Distance(lastPosition, currentPosition);
+        lastPosition = currentPosition;
+        
+        // Check for speed violations
+        if (currentSpeed > minViolationSpeed)
+        {
+            RecordViolation("Speeding", currentSpeed, GetCurrentLocation());
+        }
+        
+        // Record driving events
+        RecordDrivingEvent("Position", distanceThisFrame, currentPosition);
+    }
+    
+    private string DetermineCollisionType(Collision collision)
+    {
+        string tag = collision.gameObject.tag;
+        
+        if (tag == "Vehicle" || tag == "Car") return "Vehicle";
+        if (tag == "Pedestrian" || tag == "Person") return "Pedestrian";
+        if (tag == "Building" || tag == "Wall") return "Building";
+        if (tag == "Barrier" || tag == "Fence") return "Barrier";
+        
+        return "Object";
+    }
+    
+    private string GetCurrentLocation()
+    {
+        // Try to get location from nearby objects
+        Collider[] nearbyObjects = Physics.OverlapSphere(playerTransform.position, 10f);
+        
+        foreach (Collider obj in nearbyObjects)
+        {
+            if (obj.CompareTag("Location") || obj.CompareTag("Road"))
+            {
+                return obj.name;
+            }
+        }
+        
+        return "Unknown Location";
+    }
+    
+    #endregion
+    
     // Public methods for easy testing
     public void TestViolation() => RecordViolation("Speeding", 75f, "Highway");
     public void TestCollision() => RecordCollision("Vehicle", "Car_A", 25f);
     public void TestProgress() => SaveProgress(1, 1000, 50f, 120f);
     public void TestDrivingEvent() => RecordDrivingEvent("Braking", 0.8f, Vector3.zero);
+    
+    // Get current stats method
+    [ContextMenu("Get Real Game Stats")]
+    public void GetRealStats()
+    {
+        float sessionTime = Time.time - sessionStartTime;
+        
+        LogMessage($"📊 REAL Game Stats:");
+        LogMessage($"   Session Time: {sessionTime:F1}s");
+        LogMessage($"   Current Speed: {currentSpeed:F1} mph");
+        LogMessage($"   Max Speed: {maxSpeed:F1} mph");
+        LogMessage($"   Violations: {totalViolations}");
+        LogMessage($"   Collisions: {totalCollisions}");
+    }
 }
