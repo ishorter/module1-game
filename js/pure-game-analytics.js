@@ -830,36 +830,77 @@ class ProfessionalGameAnalytics {
     }
     
     extractUnityUIDataFromDOM() {
-        console.log('🔍 Trying to extract Unity UI data from DOM...');
+        console.log('🔍 AGGRESSIVE Unity UI data extraction...');
         
         try {
-            // Look for any DOM elements that might contain Unity UI data
+            let foundData = false;
+            
+            // Method 1: Look for any DOM elements that might contain Unity UI data
             const allElements = document.querySelectorAll('*');
+            console.log('📊 Scanning', allElements.length, 'DOM elements...');
             
             allElements.forEach(element => {
                 const text = element.textContent || element.innerText || '';
                 
                 // Look for Unity UI patterns in DOM text
                 if (text.includes('Speed:') || text.includes('Collisions:') || text.includes('Violations:')) {
-                    console.log('🎮 Found Unity UI data in DOM:', text);
+                    console.log('🎮 FOUND Unity UI data in DOM:', text);
                     this.parseUnityUIDataFromText(text);
+                    foundData = true;
                 }
             });
             
-            // Also check for any canvas overlays or UI elements
+            // Method 2: Check for any canvas overlays or UI elements
             const canvas = document.getElementById('unity-canvas');
             if (canvas) {
-                // Check for any overlays or UI elements near the canvas
+                console.log('🎯 Checking Unity canvas area...');
                 const siblings = canvas.parentElement?.children || [];
                 Array.from(siblings).forEach(sibling => {
                     if (sibling !== canvas && sibling.textContent) {
                         const text = sibling.textContent;
                         if (text.includes('Speed:') || text.includes('Collisions:') || text.includes('Violations:')) {
-                            console.log('🎮 Found Unity UI data near canvas:', text);
+                            console.log('🎮 FOUND Unity UI data near canvas:', text);
                             this.parseUnityUIDataFromText(text);
+                            foundData = true;
                         }
                     }
                 });
+            }
+            
+            // Method 3: Check all divs, spans, and text elements specifically
+            const textElements = document.querySelectorAll('div, span, p, h1, h2, h3, h4, h5, h6, label');
+            console.log('📝 Checking', textElements.length, 'text elements...');
+            
+            textElements.forEach(element => {
+                const text = element.textContent || element.innerText || '';
+                
+                // Look for specific patterns like "Violations: 7", "Speed: 15.5 MPH", etc.
+                if (text.match(/\b(Violations?|Speed|Collisions?|Max Speed):\s*[\d.]+\b/i)) {
+                    console.log('🎮 FOUND game data in text element:', text);
+                    this.parseUnityUIDataFromText(text);
+                    foundData = true;
+                }
+            });
+            
+            // Method 4: Check if Unity renders UI to any specific containers
+            const possibleContainers = document.querySelectorAll('[id*="ui"], [id*="game"], [id*="stats"], [class*="ui"], [class*="game"], [class*="stats"]');
+            console.log('📦 Checking', possibleContainers.length, 'possible UI containers...');
+            
+            possibleContainers.forEach(container => {
+                const text = container.textContent || container.innerText || '';
+                if (text.match(/\b(Violations?|Speed|Collisions?|Max Speed):\s*[\d.]+\b/i)) {
+                    console.log('🎮 FOUND game data in container:', text);
+                    this.parseUnityUIDataFromText(text);
+                    foundData = true;
+                }
+            });
+            
+            // Method 5: Try to access Unity's internal state directly
+            this.attemptDirectUnityAccess();
+            
+            if (!foundData) {
+                console.log('⚠️ No Unity UI data found in DOM - Unity might render UI directly to canvas');
+                console.log('💡 Current gameStats:', this.gameData.gameStats);
             }
             
         } catch (error) {
@@ -1418,10 +1459,10 @@ class ProfessionalGameAnalytics {
             this.captureUnityUIData();
         }, 5000);
         
-        // Fallback method: Try to extract data from DOM elements (if Unity renders UI to DOM)
+        // Aggressive DOM extraction: Try to extract data from DOM elements every 2 seconds
         setInterval(() => {
             this.extractUnityUIDataFromDOM();
-        }, 10000);
+        }, 2000);
     }
     
     updateUnityGameData() {
@@ -1801,6 +1842,143 @@ class ProfessionalGameAnalytics {
     
     generateSessionId() {
         return 'professional_analytics_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
+
+    attemptDirectUnityAccess() {
+        try {
+            console.log('🔍 Attempting direct Unity access...');
+            
+            if (window.unityInstance) {
+                console.log('✅ Unity instance found, attempting data access...');
+                
+                // Try to access Unity's internal game state
+                try {
+                    // Method 1: Try to call Unity methods if they exist
+                    if (typeof window.unityInstance.SendMessage === 'function') {
+                        console.log('📞 Unity SendMessage available - trying to request game data...');
+                        
+                        // Try to request current game stats
+                        const gameObjects = ['GameManager', 'UIController', 'GameController', 'StatsManager'];
+                        gameObjects.forEach(obj => {
+                            try {
+                                window.unityInstance.SendMessage(obj, 'GetCurrentStats', '');
+                                console.log('📡 Requested stats from:', obj);
+                            } catch (e) {
+                                console.log('⚠️ Could not request from:', obj);
+                            }
+                        });
+                    }
+                    
+                    // Method 2: Try to access Unity's module for game data
+                    if (window.unityInstance.Module) {
+                        console.log('🧠 Unity Module accessible, checking for game data...');
+                        
+                        // Try to find game data in Unity's memory or exports
+                        const module = window.unityInstance.Module;
+                        if (module.HEAP32) {
+                            console.log('💾 Unity HEAP32 accessible, size:', module.HEAP32.length);
+                        }
+                        
+                        // Check for any exported functions that might contain game data
+                        const exports = Object.keys(module).filter(key => 
+                            typeof module[key] === 'function' && 
+                            (key.toLowerCase().includes('game') || 
+                             key.toLowerCase().includes('stats') || 
+                             key.toLowerCase().includes('violation') ||
+                             key.toLowerCase().includes('collision'))
+                        );
+                        
+                        if (exports.length > 0) {
+                            console.log('🎯 Found potential game-related exports:', exports);
+                        }
+                    }
+                    
+                } catch (error) {
+                    console.log('⚠️ Direct Unity access failed:', error);
+                }
+            } else {
+                console.log('❌ Unity instance not available for direct access');
+            }
+            
+        } catch (error) {
+            console.log('⚠️ Unity access attempt failed:', error);
+        }
+    }
+
+    // Enhanced console parsing with more patterns
+    parseUnityConsoleMessage(message) {
+        try {
+            console.log('🎮 Enhanced console parsing:', message);
+            
+            // Parse multiple patterns for each data type
+            const patterns = {
+                speed: [
+                    /Speed:\s*([\d.]+)\s*MPH/i,
+                    /Speed[:\s]*([\d.]+)/i,
+                    /Current Speed[:\s]*([\d.]+)/i
+                ],
+                maxSpeed: [
+                    /Max Speed:\s*([\d.]+)\s*MPH/i,
+                    /Max Speed[:\s]*([\d.]+)/i,
+                    /Top Speed[:\s]*([\d.]+)/i
+                ],
+                violations: [
+                    /Violations:\s*(\d+)/i,
+                    /Violations[:\s]*(\d+)/i,
+                    /Violation Count[:\s]*(\d+)/i,
+                    /Total Violations[:\s]*(\d+)/i
+                ],
+                collisions: [
+                    /Collisions:\s*(\d+)/i,
+                    /Collisions[:\s]*(\d+)/i,
+                    /Collision Count[:\s]*(\d+)/i,
+                    /Total Collisions[:\s]*(\d+)/i
+                ]
+            };
+            
+            let foundAnyData = false;
+            
+            // Try each pattern for each data type
+            Object.keys(patterns).forEach(dataType => {
+                patterns[dataType].forEach(pattern => {
+                    const match = message.match(pattern);
+                    if (match) {
+                        const value = dataType === 'speed' || dataType === 'maxSpeed' ? 
+                                     parseFloat(match[1]) : parseInt(match[1]);
+                        
+                        if (this.gameData.gameStats[dataType] !== value) {
+                            this.gameData.gameStats[dataType] = value;
+                            console.log(`🎯 ${dataType} updated from console:`, value);
+                            foundAnyData = true;
+                        }
+                    }
+                });
+            });
+            
+            if (foundAnyData) {
+                console.log('✅ Game data updated from console parsing');
+                console.log('📊 Current stats:', this.gameData.gameStats);
+            }
+            
+        } catch (error) {
+            this.handleError('Console Message Parsing', error);
+        }
+    }
+
+    // Manual trigger method - call this from browser console to force data extraction
+    forceUnityDataExtraction() {
+        console.log('🚀 MANUAL Unity data extraction triggered!');
+        console.log('📊 Current gameStats before extraction:', this.gameData.gameStats);
+        
+        // Try all extraction methods
+        this.extractUnityUIDataFromDOM();
+        this.attemptDirectUnityAccess();
+        
+        // Force save current data
+        this.saveToFirebase();
+        
+        console.log('📊 Current gameStats after extraction:', this.gameData.gameStats);
+        console.log('💡 Use this method to manually trigger data extraction: window.professionalAnalytics.forceUnityDataExtraction()');
     }
 }
 
