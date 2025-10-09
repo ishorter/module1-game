@@ -830,32 +830,36 @@ class ProfessionalGameAnalytics {
     }
     
     extractUnityUIDataFromDOM() {
-        console.log('🔍 AGGRESSIVE Unity UI data extraction...');
+        console.log('🔍 OPTIMIZED Unity UI data extraction...');
         
         try {
             let foundData = false;
             
-            // Method 1: Look for any DOM elements that might contain Unity UI data
-            const allElements = document.querySelectorAll('*');
-            console.log('📊 Scanning', allElements.length, 'DOM elements...');
+            // OPTIMIZED Method 1: Only scan visible text elements (much faster)
+            const textElements = document.querySelectorAll('div:not([style*="display: none"]), span:not([style*="display: none"]), p:not([style*="display: none"]), h1, h2, h3, h4, h5, h6, label');
+            console.log('📝 Checking', Math.min(textElements.length, 100), 'visible text elements (limited for performance)...');
             
-            allElements.forEach(element => {
+            // Limit to first 100 elements to prevent freezing
+            const limitedElements = Array.from(textElements).slice(0, 100);
+            
+            limitedElements.forEach(element => {
                 const text = element.textContent || element.innerText || '';
                 
-                // Look for Unity UI patterns in DOM text
-                if (text.includes('Speed:') || text.includes('Collisions:') || text.includes('Violations:')) {
-                    console.log('🎮 FOUND Unity UI data in DOM:', text);
+                // Look for specific patterns like "Violations: 7", "Speed: 15.5 MPH", etc.
+                if (text.match(/\b(Violations?|Speed|Collisions?|Max Speed):\s*[\d.]+\b/i)) {
+                    console.log('🎮 FOUND game data in text element:', text);
                     this.parseUnityUIDataFromText(text);
                     foundData = true;
                 }
             });
             
-            // Method 2: Check for any canvas overlays or UI elements
+            // OPTIMIZED Method 2: Check Unity canvas area only
             const canvas = document.getElementById('unity-canvas');
-            if (canvas) {
-                console.log('🎯 Checking Unity canvas area...');
-                const siblings = canvas.parentElement?.children || [];
-                Array.from(siblings).forEach(sibling => {
+            if (canvas && canvas.parentElement) {
+                console.log('🎯 Checking Unity canvas siblings only...');
+                const siblings = Array.from(canvas.parentElement.children).slice(0, 10); // Limit to 10 siblings
+                
+                siblings.forEach(sibling => {
                     if (sibling !== canvas && sibling.textContent) {
                         const text = sibling.textContent;
                         if (text.includes('Speed:') || text.includes('Collisions:') || text.includes('Violations:')) {
@@ -867,39 +871,8 @@ class ProfessionalGameAnalytics {
                 });
             }
             
-            // Method 3: Check all divs, spans, and text elements specifically
-            const textElements = document.querySelectorAll('div, span, p, h1, h2, h3, h4, h5, h6, label');
-            console.log('📝 Checking', textElements.length, 'text elements...');
-            
-            textElements.forEach(element => {
-                const text = element.textContent || element.innerText || '';
-                
-                // Look for specific patterns like "Violations: 7", "Speed: 15.5 MPH", etc.
-                if (text.match(/\b(Violations?|Speed|Collisions?|Max Speed):\s*[\d.]+\b/i)) {
-                    console.log('🎮 FOUND game data in text element:', text);
-                    this.parseUnityUIDataFromText(text);
-                    foundData = true;
-                }
-            });
-            
-            // Method 4: Check if Unity renders UI to any specific containers
-            const possibleContainers = document.querySelectorAll('[id*="ui"], [id*="game"], [id*="stats"], [class*="ui"], [class*="game"], [class*="stats"]');
-            console.log('📦 Checking', possibleContainers.length, 'possible UI containers...');
-            
-            possibleContainers.forEach(container => {
-                const text = container.textContent || container.innerText || '';
-                if (text.match(/\b(Violations?|Speed|Collisions?|Max Speed):\s*[\d.]+\b/i)) {
-                    console.log('🎮 FOUND game data in container:', text);
-                    this.parseUnityUIDataFromText(text);
-                    foundData = true;
-                }
-            });
-            
-            // Method 5: Try to access Unity's internal state directly
-            this.attemptDirectUnityAccess();
-            
             if (!foundData) {
-                console.log('⚠️ No Unity UI data found in DOM - Unity might render UI directly to canvas');
+                console.log('⚠️ No Unity UI data found - Unity renders UI directly to canvas');
                 console.log('💡 Current gameStats:', this.gameData.gameStats);
             }
             
@@ -1459,10 +1432,10 @@ class ProfessionalGameAnalytics {
             this.captureUnityUIData();
         }, 5000);
         
-        // Aggressive DOM extraction: Try to extract data from DOM elements every 2 seconds
+        // Optimized DOM extraction: Less frequent to prevent Unity freezing
         setInterval(() => {
             this.extractUnityUIDataFromDOM();
-        }, 2000);
+        }, 15000); // Reduced from 2 seconds to 15 seconds
     }
     
     updateUnityGameData() {
@@ -1846,58 +1819,34 @@ class ProfessionalGameAnalytics {
 
     attemptDirectUnityAccess() {
         try {
-            console.log('🔍 Attempting direct Unity access...');
+            console.log('🔍 Attempting lightweight Unity access...');
             
             if (window.unityInstance) {
-                console.log('✅ Unity instance found, attempting data access...');
-                
-                // Try to access Unity's internal game state
+                // Only try lightweight access to prevent Unity freezing
                 try {
-                    // Method 1: Try to call Unity methods if they exist
+                    // Method 1: Only try one SendMessage call (not multiple)
                     if (typeof window.unityInstance.SendMessage === 'function') {
-                        console.log('📞 Unity SendMessage available - trying to request game data...');
+                        console.log('📞 Trying single Unity SendMessage call...');
                         
-                        // Try to request current game stats
-                        const gameObjects = ['GameManager', 'UIController', 'GameController', 'StatsManager'];
-                        gameObjects.forEach(obj => {
-                            try {
-                                window.unityInstance.SendMessage(obj, 'GetCurrentStats', '');
-                                console.log('📡 Requested stats from:', obj);
-                            } catch (e) {
-                                console.log('⚠️ Could not request from:', obj);
-                            }
-                        });
+                        // Try only the most likely game object
+                        try {
+                            window.unityInstance.SendMessage('GameManager', 'GetStats', '');
+                            console.log('📡 Requested stats from GameManager');
+                        } catch (e) {
+                            console.log('⚠️ GameManager not available');
+                        }
                     }
                     
-                    // Method 2: Try to access Unity's module for game data
+                    // Method 2: Only check if Module exists (don't access HEAP32)
                     if (window.unityInstance.Module) {
-                        console.log('🧠 Unity Module accessible, checking for game data...');
-                        
-                        // Try to find game data in Unity's memory or exports
-                        const module = window.unityInstance.Module;
-                        if (module.HEAP32) {
-                            console.log('💾 Unity HEAP32 accessible, size:', module.HEAP32.length);
-                        }
-                        
-                        // Check for any exported functions that might contain game data
-                        const exports = Object.keys(module).filter(key => 
-                            typeof module[key] === 'function' && 
-                            (key.toLowerCase().includes('game') || 
-                             key.toLowerCase().includes('stats') || 
-                             key.toLowerCase().includes('violation') ||
-                             key.toLowerCase().includes('collision'))
-                        );
-                        
-                        if (exports.length > 0) {
-                            console.log('🎯 Found potential game-related exports:', exports);
-                        }
+                        console.log('🧠 Unity Module accessible (lightweight check only)');
                     }
                     
                 } catch (error) {
-                    console.log('⚠️ Direct Unity access failed:', error);
+                    console.log('⚠️ Lightweight Unity access failed:', error);
                 }
             } else {
-                console.log('❌ Unity instance not available for direct access');
+                console.log('❌ Unity instance not available');
             }
             
         } catch (error) {
@@ -1970,15 +1919,46 @@ class ProfessionalGameAnalytics {
         console.log('🚀 MANUAL Unity data extraction triggered!');
         console.log('📊 Current gameStats before extraction:', this.gameData.gameStats);
         
-        // Try all extraction methods
+        // Try extraction methods with performance monitoring
+        const startTime = performance.now();
+        
         this.extractUnityUIDataFromDOM();
         this.attemptDirectUnityAccess();
+        
+        const endTime = performance.now();
+        const duration = endTime - startTime;
+        
+        console.log(`⏱️ Extraction completed in ${duration.toFixed(2)}ms`);
+        
+        if (duration > 100) {
+            console.log('⚠️ WARNING: Extraction took longer than 100ms - may cause Unity freezing');
+        }
         
         // Force save current data
         this.saveToFirebase();
         
         console.log('📊 Current gameStats after extraction:', this.gameData.gameStats);
         console.log('💡 Use this method to manually trigger data extraction: window.professionalAnalytics.forceUnityDataExtraction()');
+    }
+
+    // Emergency stop method to disable analytics if Unity freezes
+    emergencyStop() {
+        console.log('🚨 EMERGENCY STOP: Disabling analytics to prevent Unity freezing');
+        this.trackingActive = false;
+        
+        // Clear all intervals
+        if (this.domExtractionInterval) {
+            clearInterval(this.domExtractionInterval);
+        }
+        if (this.captureInterval) {
+            clearInterval(this.captureInterval);
+        }
+        if (this.saveInterval) {
+            clearInterval(this.saveInterval);
+        }
+        
+        console.log('✅ Analytics stopped - Unity should be responsive now');
+        console.log('💡 To restart: window.professionalAnalytics.trackingActive = true');
     }
 }
 
