@@ -129,8 +129,8 @@
                   window.unityFirebaseBridge.initialize(unityInstance);
                 }
                 
-                // Initialize pure JavaScript analytics
-                initializePureAnalytics(unityInstance);
+                // Initialize Professional Game Analytics
+                initializeProfessionalAnalytics(unityInstance);
 
               }).catch((message) => {
                 alert(message);
@@ -145,17 +145,23 @@
 
       document.body.appendChild(script);
 
-        // Function to initialize pure JavaScript analytics (NO Unity scripts)
-        function initializePureAnalytics(unityInstance) {
-          console.log('🎮 Initializing Pure JavaScript Game Analytics...');
-          console.log('🚫 NO Unity scripts - Pure JavaScript tracking active');
+        // Function to initialize Professional Game Analytics
+        function initializeProfessionalAnalytics(unityInstance) {
+          console.log('🎮 Initializing Professional Game Analytics System...');
           
           if (unityInstance) {
-            console.log('✅ Unity WebGL game loaded - Pure Analytics will track automatically');
+            console.log('✅ Unity WebGL game loaded - Professional Analytics will track automatically');
+            
+            // Create and start the Professional Game Analytics system
+            if (typeof ProfessionalGameAnalytics !== 'undefined') {
+              window.professionalAnalytics = new ProfessionalGameAnalytics();
+              console.log('🚀 Professional Game Analytics System started');
+            } else {
+              console.error('❌ ProfessionalGameAnalytics class not found');
+            }
+          } else {
+            console.error('❌ Unity instance not available for analytics');
           }
-          
-          // Pure JavaScript analytics is already initialized automatically
-          console.log('📊 Pure Analytics tracking: Canvas interactions, Performance, User behavior');
         }
 
     </script>

@@ -749,29 +749,29 @@ class ProfessionalGameAnalytics {
         // Parse speed data
         const speedMatch = message.match(/Speed:\s*([\d.]+)\s*MPH/);
         if (speedMatch) {
-            this.gameData.unityGameData.speed = parseFloat(speedMatch[1]);
-            console.log('🚗 Speed updated from Unity:', this.gameData.unityGameData.speed);
+            this.gameData.gameStats.speed = parseFloat(speedMatch[1]);
+            console.log('🚗 Speed updated from Unity:', this.gameData.gameStats.speed);
         }
         
         // Parse max speed data
         const maxSpeedMatch = message.match(/Max Speed:\s*([\d.]+)\s*MPH/);
         if (maxSpeedMatch) {
-            this.gameData.unityGameData.maxSpeed = parseFloat(maxSpeedMatch[1]);
-            console.log('🏎️ Max speed updated from Unity:', this.gameData.unityGameData.maxSpeed);
+            this.gameData.gameStats.maxSpeed = parseFloat(maxSpeedMatch[1]);
+            console.log('🏎️ Max speed updated from Unity:', this.gameData.gameStats.maxSpeed);
         }
         
         // Parse collision count
         const collisionMatch = message.match(/Collisions:\s*(\d+)/);
         if (collisionMatch) {
-            this.gameData.unityGameData.collisions = parseInt(collisionMatch[1]);
-            console.log('💥 Collision count updated from Unity:', this.gameData.unityGameData.collisions);
+            this.gameData.gameStats.collisions = parseInt(collisionMatch[1]);
+            console.log('💥 Collision count updated from Unity:', this.gameData.gameStats.collisions);
         }
         
         // Parse violation count
         const violationMatch = message.match(/Violations:\s*(\d+)/);
         if (violationMatch) {
-            this.gameData.unityGameData.violations = parseInt(violationMatch[1]);
-            console.log('🚨 Violation count updated from Unity:', this.gameData.unityGameData.violations);
+            this.gameData.gameStats.violations = parseInt(violationMatch[1]);
+            console.log('🚨 Violation count updated from Unity:', this.gameData.gameStats.violations);
         }
         
         // Parse time data
@@ -873,36 +873,36 @@ class ProfessionalGameAnalytics {
         // Parse speed data from UI text
         const speedMatch = text.match(/Speed:\s*([\d.]+)\s*MPH/i);
         if (speedMatch) {
-            this.gameData.unityGameData.speed = parseFloat(speedMatch[1]);
-            console.log('🚗 Speed extracted from DOM:', this.gameData.unityGameData.speed);
+            this.gameData.gameStats.speed = parseFloat(speedMatch[1]);
+            console.log('🚗 Speed extracted from DOM:', this.gameData.gameStats.speed);
         }
         
         // Parse max speed data
         const maxSpeedMatch = text.match(/Max Speed:\s*([\d.]+)\s*MPH/i);
         if (maxSpeedMatch) {
-            this.gameData.unityGameData.maxSpeed = parseFloat(maxSpeedMatch[1]);
-            console.log('🏎️ Max speed extracted from DOM:', this.gameData.unityGameData.maxSpeed);
+            this.gameData.gameStats.maxSpeed = parseFloat(maxSpeedMatch[1]);
+            console.log('🏎️ Max speed extracted from DOM:', this.gameData.gameStats.maxSpeed);
         }
         
         // Parse collision count
         const collisionMatch = text.match(/Collisions:\s*(\d+)/i);
         if (collisionMatch) {
-            this.gameData.unityGameData.collisions = parseInt(collisionMatch[1]);
-            console.log('💥 Collision count extracted from DOM:', this.gameData.unityGameData.collisions);
+            this.gameData.gameStats.collisions = parseInt(collisionMatch[1]);
+            console.log('💥 Collision count extracted from DOM:', this.gameData.gameStats.collisions);
         }
         
         // Parse violation count
         const violationMatch = text.match(/Violations:\s*(\d+)/i);
         if (violationMatch) {
-            this.gameData.unityGameData.violations = parseInt(violationMatch[1]);
-            console.log('🚨 Violation count extracted from DOM:', this.gameData.unityGameData.violations);
+            this.gameData.gameStats.violations = parseInt(violationMatch[1]);
+            console.log('🚨 Violation count extracted from DOM:', this.gameData.gameStats.violations);
         }
         
         // Parse gear data
         const gearMatch = text.match(/Gear:\s*(\w+)/i);
         if (gearMatch) {
-            this.gameData.unityGameData.gear = gearMatch[1];
-            console.log('⚙️ Gear extracted from DOM:', this.gameData.unityGameData.gear);
+            this.gameData.gameStats.gear = gearMatch[1];
+            console.log('⚙️ Gear extracted from DOM:', this.gameData.gameStats.gear);
         }
         
         // Parse time data
@@ -917,21 +917,21 @@ class ProfessionalGameAnalytics {
         
         // Process different Unity messages
         if (method.includes('Collision')) {
-            this.gameData.unityGameData.collisions++;
-            console.log('💥 Collision detected from Unity, count:', this.gameData.unityGameData.collisions);
+            this.gameData.gameStats.collisions++;
+            console.log('💥 Collision detected from Unity, count:', this.gameData.gameStats.collisions);
         }
         
         if (method.includes('Violation')) {
-            this.gameData.unityGameData.violations++;
-            console.log('🚨 Violation detected from Unity, count:', this.gameData.unityGameData.violations);
+            this.gameData.gameStats.violations++;
+            console.log('🚨 Violation detected from Unity, count:', this.gameData.gameStats.violations);
         }
         
         if (method.includes('Speed')) {
             const speedValue = parseFloat(parameter) || 0;
             if (speedValue > 0) {
-                this.gameData.unityGameData.speed = speedValue;
-                if (speedValue > this.gameData.unityGameData.maxSpeed) {
-                    this.gameData.unityGameData.maxSpeed = speedValue;
+                this.gameData.gameStats.speed = speedValue;
+                if (speedValue > this.gameData.gameStats.maxSpeed) {
+                    this.gameData.gameStats.maxSpeed = speedValue;
                 }
                 console.log('🚗 Speed updated from Unity:', speedValue);
             }
@@ -1427,10 +1427,10 @@ class ProfessionalGameAnalytics {
     updateUnityGameData() {
         // Update Unity game data and log current state
         console.log('📊 Unity Game Data Status:', {
-            speed: this.gameData.unityGameData.speed,
-            maxSpeed: this.gameData.unityGameData.maxSpeed,
-            violations: this.gameData.unityGameData.violations,
-            collisions: this.gameData.unityGameData.collisions,
+            speed: this.gameData.gameStats.speed,
+            maxSpeed: this.gameData.gameStats.maxSpeed,
+            violations: this.gameData.gameStats.violations,
+            collisions: this.gameData.gameStats.collisions,
             timeSpent: Math.round((Date.now() - this.gameData.startTime) / 1000)
         });
     }
@@ -1542,7 +1542,7 @@ class ProfessionalGameAnalytics {
                 eventsCount: this.gameData.events.length,
                 performance: this.gameData.performance,
                 userInteractions: this.gameData.userInteractions,
-                unityGameData: this.gameData.unityGameData, // Include Unity internal data
+                gameStats: this.gameData.gameStats, // Include Unity internal data
                 recentEvents: this.gameData.events.slice(-10), // Last 10 events
                 timestamp: serverTimestamp(),
                 websiteUrl: window.location.href,
@@ -1645,7 +1645,6 @@ class ProfessionalGameAnalytics {
     forceSave() {
         this.saveToFirebase();
     }
-}
 
     parseUnityConsoleMessage(message) {
         try {
@@ -1805,18 +1804,5 @@ class ProfessionalGameAnalytics {
     }
 }
 
-// Initialize Professional Game Analytics
-window.professionalGameAnalytics = new ProfessionalGameAnalytics();
-
-        console.log('🚀 Professional Game Analytics System loaded successfully!');
-        console.log('📊 Professional tracking: Unity game data (violations, collisions, speed, score)');
-        console.log('🛡️ Error-resistant: Handles all Unity errors gracefully');
-        console.log('💾 Auto-save: Data saves to Firestore game1 collection every 30 seconds');
-        console.log('🎯 Multi-method tracking: Console parsing, DOM extraction, Unity messages');
-        console.log('🚨 Violations: Captured from Unity UI and console output');
-        console.log('💥 Collisions: Captured from Unity UI and internal game state');
-        console.log('🔍 Fallback systems: Multiple tracking methods ensure data capture');
-        console.log('📡 Professional integration: Robust Unity data access with error handling');
-        console.log('🛡️ Error handling: Continues tracking even with Unity loader errors');
-        console.log('🎯 This will capture the REAL Unity game data (1 collision, 2 violations)!');
-        console.log('✅ Professional Game Analytics System is now active and error-resistant!');
+// Make the class available globally
+window.ProfessionalGameAnalytics = ProfessionalGameAnalytics;
