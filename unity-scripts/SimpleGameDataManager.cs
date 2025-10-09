@@ -127,15 +127,10 @@ public class SimpleGameDataManager : MonoBehaviour
         isFirebaseReady = true;
         LogMessage("✅ Firebase ready (fallback initialization)");
         
-        // Test the connection
-        TestConnection();
+        // Verify Firebase connection
+        LogMessage("✅ Firebase ready - real game data tracking enabled");
     }
     
-    private void TestConnection()
-    {
-        LogMessage("Firebase connection ready - waiting for real game events...");
-        // No test data - only real game events will be tracked
-    }
     
     /// <summary>
     /// Callback from JavaScript when Firebase is ready
@@ -430,11 +425,6 @@ public class SimpleGameDataManager : MonoBehaviour
     
     #endregion
     
-    // Public methods for easy testing
-    public void TestViolation() => RecordViolation("Speeding", 75f, "Highway");
-    public void TestCollision() => RecordCollision("Vehicle", "Car_A", 25f);
-    public void TestProgress() => SaveProgress(1, 1000, 50f, 120f);
-    public void TestDrivingEvent() => RecordDrivingEvent("Braking", 0.8f, Vector3.zero);
     
     // Get current stats method
     [ContextMenu("Get Real Game Stats")]
@@ -473,21 +463,4 @@ public class SimpleGameDataManager : MonoBehaviour
         LogMessage("✅ Firebase forced ready - tracking active");
     }
     
-    // Force test data method
-    [ContextMenu("Force Test Real Data")]
-    public void ForceTestRealData()
-    {
-        LogMessage("🧪 Force testing real data tracking...");
-        
-        // Test violation
-        RecordViolation("Force Test Speeding", 85f, "Force Test Highway");
-        
-        // Test collision
-        RecordCollision("Force Test Vehicle", "Force Test Car", 35f);
-        
-        // Test progress
-        SaveProgress(1, 2000, 75f, 180f);
-        
-        LogMessage("✅ Force test data sent - check Firebase console");
-    }
 }

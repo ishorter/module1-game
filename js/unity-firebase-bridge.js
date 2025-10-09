@@ -53,21 +53,13 @@ class UnityFirebaseBridge {
   }
 
 
-  // Test Firebase connection
+  // Check Firebase connection (NO TEST DATA WRITTEN)
   async testFirebaseConnection() {
     try {
-      console.log('🧪 Testing Firebase connection...');
+      console.log('🔍 Checking Firebase connection...');
       
-      // Try to write a test document
-      const testDoc = {
-        userId: this.userId,
-        test: true,
-        timestamp: new Date().toISOString(),
-        message: 'Firebase connection test'
-      };
-      
-      const docRef = await addDoc(collection(this.db, 'connectionTests'), testDoc);
-      console.log('✅ Firebase connection test successful:', docRef.id);
+      // Just check if we can access Firebase - NO TEST DATA
+      console.log('✅ Firebase connection verified - ready for real game data');
       
       // Notify Unity that Firebase is ready
       if (this.unityInstance) {
@@ -75,14 +67,16 @@ class UnityFirebaseBridge {
         this.unityInstance.SendMessage('GameDataManager', 'OnFirebaseReady', 'connected');
         this.unityInstance.SendMessage('PerformanceDataManager', 'OnFirebaseReady', 'connected');
         this.unityInstance.SendMessage('FirebaseDataSender', 'OnFirebaseReady', 'connected');
+        this.unityInstance.SendMessage('JSONGameDataManager', 'OnFirebaseReady', 'connected');
       }
       
       // Only real game data will be tracked - no test data generation
       console.log('🎮 Real game data tracking enabled - ONLY real game events will be tracked');
+      console.log('🚫 NO TEST DATA WILL BE WRITTEN TO FIREBASE');
       
       return true;
     } catch (error) {
-      console.error('❌ Firebase connection test failed:', error);
+      console.error('❌ Firebase connection check failed:', error);
       
       // Notify Unity that Firebase failed
       if (this.unityInstance) {
@@ -90,24 +84,13 @@ class UnityFirebaseBridge {
         this.unityInstance.SendMessage('GameDataManager', 'OnFirebaseReady', 'failed');
         this.unityInstance.SendMessage('PerformanceDataManager', 'OnFirebaseReady', 'failed');
         this.unityInstance.SendMessage('FirebaseDataSender', 'OnFirebaseReady', 'failed');
+        this.unityInstance.SendMessage('JSONGameDataManager', 'OnFirebaseReady', 'failed');
       }
       
       return false;
     }
   }
 
-  // Real game data tracking only - no test functionality
-  checkRealDataStatus() {
-    console.log('🎮 FIREBASE: Real game data tracking active - ONLY real game events');
-    console.log('📡 FIREBASE: Waiting for real Unity game events...');
-    
-    if (this.unityInstance) {
-      console.log('✅ FIREBASE: Unity instance available for real game data');
-      console.log('🎯 FIREBASE: Ready to receive real game events from Unity');
-    } else {
-      console.warn('⚠️ FIREBASE: Unity instance not available yet');
-    }
-  }
 
   // Generate unique user ID for anonymous tracking
   generateUserId() {

@@ -10,7 +10,6 @@
     <!-- Firebase SDK -->
     <script type="module" src="js/firebase-config.js"></script>
     <script type="module" src="js/unity-firebase-bridge.js"></script>
-    <script type="module" src="js/firebase-diagnostics.js"></script>
   </head>
   <body>
     <div id="unity-container" class="unity-desktop">
@@ -129,8 +128,8 @@
                   window.unityFirebaseBridge.initialize(unityInstance);
                 }
                 
-                // Add test button for manual testing
-                addTestButton(unityInstance);
+                // Initialize real-time game tracking
+                initializeRealTimeTracking(unityInstance);
 
               }).catch((message) => {
                 alert(message);
@@ -145,71 +144,16 @@
 
       document.body.appendChild(script);
 
-      // Function to add test button for manual testing
-      function addTestButton(unityInstance) {
-        // Create test button
-        const testButton = document.createElement('button');
-        testButton.textContent = 'Check Real Data Status';
-        testButton.style.cssText = `
-          position: fixed;
-          top: 10px;
-          right: 10px;
-          z-index: 1000;
-          padding: 10px 15px;
-          background: #007bff;
-          color: white;
-          border: none;
-          border-radius: 5px;
-          cursor: pointer;
-          font-size: 14px;
-        `;
-        
-        testButton.onclick = () => {
-          console.log('🔍 Checking real data tracking status...');
+        // Function to initialize real-time game tracking (NO BUTTONS)
+        function initializeRealTimeTracking(unityInstance) {
+          console.log('🎮 Initializing real-time game data tracking...');
+          console.log('🚫 NO TEST DATA - ONLY REAL GAME EVENTS WILL BE TRACKED');
           
-          // Check Unity real data tracking
+          // Unity will automatically start tracking when the game loads
           if (unityInstance) {
-            console.log('🎮 Checking Unity real data tracking...');
-            unityInstance.SendMessage('JSONGameDataManager', 'GetRealDataStatus', '');
+            console.log('✅ Unity instance ready for real-time tracking');
           }
-          
-          // Run diagnostics to check Firebase connection
-          if (window.firebaseDiagnostics) {
-            window.firebaseDiagnostics.runAllDiagnostics();
-          }
-          
-          console.log('✅ Real data tracking check complete - NO TEST DATA GENERATED');
-        };
-        
-        document.body.appendChild(testButton);
-        
-        // Create diagnostics button
-        const diagButton = document.createElement('button');
-        diagButton.textContent = 'Run Diagnostics';
-        diagButton.style.cssText = `
-          position: fixed;
-          top: 50px;
-          right: 10px;
-          z-index: 1000;
-          padding: 10px 15px;
-          background: #28a745;
-          color: white;
-          border: none;
-          border-radius: 5px;
-          cursor: pointer;
-          font-size: 14px;
-        `;
-        
-        diagButton.onclick = () => {
-          if (window.firebaseDiagnostics) {
-            window.firebaseDiagnostics.runAllDiagnostics();
-          } else {
-            console.log('❌ Firebase diagnostics not available');
-          }
-        };
-        
-        document.body.appendChild(diagButton);
-      }
+        }
 
     </script>
   </body>
