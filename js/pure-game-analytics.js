@@ -215,24 +215,61 @@ class PureGameAnalytics {
     setupUnityDataExtraction() {
         console.log('📊 Setting up Unity data extraction...');
         
+        // Add error handling for Unity WebGL context issues
+        this.setupUnityErrorHandling();
+        
         // Override Unity's SendMessage to capture all game data
         if (window.unityInstance && window.unityInstance.SendMessage) {
-            const originalSendMessage = window.unityInstance.SendMessage;
-            window.unityInstance.SendMessage = (gameObject, method, parameter) => {
-                // Log all Unity messages
-                console.log('🎮 Unity Message:', { gameObject, method, parameter });
-                
-                // Capture game data messages
-                this.processUnityMessage(gameObject, method, parameter);
-                
-                // Call original method
-                return originalSendMessage.call(window.unityInstance, gameObject, method, parameter);
-            };
-            console.log('✅ Unity SendMessage interception active');
+            try {
+                const originalSendMessage = window.unityInstance.SendMessage;
+                window.unityInstance.SendMessage = (gameObject, method, parameter) => {
+                    try {
+                        // Log all Unity messages
+                        console.log('🎮 Unity Message:', { gameObject, method, parameter });
+                        
+                        // Capture game data messages
+                        this.processUnityMessage(gameObject, method, parameter);
+                        
+                        // Call original method
+                        return originalSendMessage.call(window.unityInstance, gameObject, method, parameter);
+                    } catch (error) {
+                        console.log('⚠️ Unity SendMessage error:', error);
+                        // Continue without breaking the game
+                        return originalSendMessage.call(window.unityInstance, gameObject, method, parameter);
+                    }
+                };
+                console.log('✅ Unity SendMessage interception active');
+            } catch (error) {
+                console.log('⚠️ Could not setup Unity SendMessage interception:', error);
+            }
         }
         
         // Try to access Unity's memory and internal state
         this.accessUnityMemory();
+    }
+    
+    setupUnityErrorHandling() {
+        console.log('🛡️ Setting up Unity error handling...');
+        
+        // Handle WebGL context errors
+        window.addEventListener('error', (event) => {
+            if (event.error && event.error.message && event.error.message.includes('GLctx')) {
+                console.log('🛡️ WebGL context error detected, continuing with data tracking...');
+                // Don't let WebGL errors stop our tracking
+                event.preventDefault();
+                return false;
+            }
+        });
+        
+        // Handle unhandled promise rejections
+        window.addEventListener('unhandledrejection', (event) => {
+            if (event.reason && event.reason.message && event.reason.message.includes('GLctx')) {
+                console.log('🛡️ WebGL promise rejection handled, continuing...');
+                event.preventDefault();
+            }
+        });
+        
+        console.log('✅ Unity error handling active');
     }
     
     accessUnityMemory() {
@@ -254,6 +291,8 @@ class PureGameAnalytics {
             }
         } catch (error) {
             console.log('⚠️ Could not access Unity memory:', error);
+            // Continue with other tracking methods even if memory access fails
+            console.log('🔄 Continuing with alternative Unity data tracking methods...');
         }
     }
     
@@ -427,6 +466,89 @@ class PureGameAnalytics {
         // Method 3: Try to parse Unity's memory directly
         
         console.log('📊 Unity data access attempts completed');
+    }
+    
+    extractUnityUIDataFromDOM() {
+        console.log('🔍 Trying to extract Unity UI data from DOM...');
+        
+        try {
+            // Look for any DOM elements that might contain Unity UI data
+            const allElements = document.querySelectorAll('*');
+            
+            allElements.forEach(element => {
+                const text = element.textContent || element.innerText || '';
+                
+                // Look for Unity UI patterns in DOM text
+                if (text.includes('Speed:') || text.includes('Collisions:') || text.includes('Violations:')) {
+                    console.log('🎮 Found Unity UI data in DOM:', text);
+                    this.parseUnityUIDataFromText(text);
+                }
+            });
+            
+            // Also check for any canvas overlays or UI elements
+            const canvas = document.getElementById('unity-canvas');
+            if (canvas) {
+                // Check for any overlays or UI elements near the canvas
+                const siblings = canvas.parentElement?.children || [];
+                Array.from(siblings).forEach(sibling => {
+                    if (sibling !== canvas && sibling.textContent) {
+                        const text = sibling.textContent;
+                        if (text.includes('Speed:') || text.includes('Collisions:') || text.includes('Violations:')) {
+                            console.log('🎮 Found Unity UI data near canvas:', text);
+                            this.parseUnityUIDataFromText(text);
+                        }
+                    }
+                });
+            }
+            
+        } catch (error) {
+            console.log('⚠️ DOM extraction failed:', error);
+        }
+    }
+    
+    parseUnityUIDataFromText(text) {
+        console.log('📊 Parsing Unity UI data from text:', text);
+        
+        // Parse speed data from UI text
+        const speedMatch = text.match(/Speed:\s*([\d.]+)\s*MPH/i);
+        if (speedMatch) {
+            this.gameData.unityGameData.speed = parseFloat(speedMatch[1]);
+            console.log('🚗 Speed extracted from DOM:', this.gameData.unityGameData.speed);
+        }
+        
+        // Parse max speed data
+        const maxSpeedMatch = text.match(/Max Speed:\s*([\d.]+)\s*MPH/i);
+        if (maxSpeedMatch) {
+            this.gameData.unityGameData.maxSpeed = parseFloat(maxSpeedMatch[1]);
+            console.log('🏎️ Max speed extracted from DOM:', this.gameData.unityGameData.maxSpeed);
+        }
+        
+        // Parse collision count
+        const collisionMatch = text.match(/Collisions:\s*(\d+)/i);
+        if (collisionMatch) {
+            this.gameData.unityGameData.collisions = parseInt(collisionMatch[1]);
+            console.log('💥 Collision count extracted from DOM:', this.gameData.unityGameData.collisions);
+        }
+        
+        // Parse violation count
+        const violationMatch = text.match(/Violations:\s*(\d+)/i);
+        if (violationMatch) {
+            this.gameData.unityGameData.violations = parseInt(violationMatch[1]);
+            console.log('🚨 Violation count extracted from DOM:', this.gameData.unityGameData.violations);
+        }
+        
+        // Parse gear data
+        const gearMatch = text.match(/Gear:\s*(\w+)/i);
+        if (gearMatch) {
+            this.gameData.unityGameData.gear = gearMatch[1];
+            console.log('⚙️ Gear extracted from DOM:', this.gameData.unityGameData.gear);
+        }
+        
+        // Parse time data
+        const timeMatch = text.match(/Time:\s*(\d{2}:\d{2})/i);
+        if (timeMatch) {
+            console.log('⏰ Time extracted from DOM:', timeMatch[1]);
+        }
     }
     
     processUnityMessage(gameObject, method, parameter) {
@@ -934,6 +1056,11 @@ class PureGameAnalytics {
         setInterval(() => {
             this.captureUnityUIData();
         }, 5000);
+        
+        // Fallback method: Try to extract data from DOM elements (if Unity renders UI to DOM)
+        setInterval(() => {
+            this.extractUnityUIDataFromDOM();
+        }, 10000);
     }
     
     updateUnityGameData() {
@@ -1171,4 +1298,6 @@ window.pureGameAnalytics = new PureGameAnalytics();
         console.log('💥 Collisions: Captured from Unity UI and internal game state');
         console.log('🔍 Unity data access: Memory scanning, SendMessage interception, console parsing');
         console.log('📡 Unity method calls: Attempting to access Unity game objects and methods');
+        console.log('🛡️ WebGL error handling: Continues tracking even if Unity has WebGL errors');
+        console.log('🔍 DOM fallback: Extracts Unity UI data from DOM elements if needed');
         console.log('🎯 This will capture the REAL Unity game data (1 collision, 2 violations)!');
