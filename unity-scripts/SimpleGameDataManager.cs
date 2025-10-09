@@ -40,9 +40,8 @@ public class SimpleGameDataManager : MonoBehaviour
     
     private void TestConnection()
     {
-        LogMessage("Testing Firebase connection...");
-        // Send a test violation (will be queued if Firebase not ready)
-        RecordViolation("Test Connection", 50f, "Test Location");
+        LogMessage("Firebase connection ready - waiting for real game events...");
+        // No test data - only real game events will be tracked
     }
     
     /// <summary>

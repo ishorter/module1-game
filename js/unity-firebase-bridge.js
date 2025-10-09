@@ -77,11 +77,8 @@ class UnityFirebaseBridge {
         this.unityInstance.SendMessage('FirebaseDataSender', 'OnFirebaseReady', 'connected');
       }
       
-      // Send a test violation to verify the system works
-      setTimeout(() => {
-        console.log('🎮 Sending test violation to verify system...');
-        this.handleViolation('Test Violation|65.5|Test Location|1');
-      }, 2000);
+      // Test data generation disabled - only real game data will be tracked
+      console.log('🎮 Real game data tracking enabled - no test data will be generated');
       
       return true;
     } catch (error) {
