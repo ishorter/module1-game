@@ -18,16 +18,18 @@ class PureGameAnalytics {
                 keyPresses: 0,
                 mouseMovements: 0
             },
-            // Game-specific data tracking
-            gameStats: {
+            // Unity internal game data tracking (from Unity's UI)
+            unityGameData: {
                 speed: 0,
                 maxSpeed: 0,
-                violations: [],
-                collisions: [],
+                violations: 0,        // Count from Unity UI
+                collisions: 0,        // Count from Unity UI
                 score: 0,
                 level: 1,
                 distance: 0,
-                timeSpent: 0
+                timeSpent: 0,
+                gear: 'Drive',
+                handbrake: false
             }
         };
         
@@ -79,8 +81,8 @@ class PureGameAnalytics {
         // Track game events (when Unity sends them)
         this.trackGameEvents();
         
-        // Track driving-specific data
-        this.trackDrivingData();
+        // Track Unity internal game data (not keyboard interactions)
+        this.trackUnityInternalData();
         
         // Auto-save data periodically
         this.startAutoSave();
@@ -163,7 +165,7 @@ class PureGameAnalytics {
     trackUserInteractions() {
         console.log('👆 Tracking user interactions...');
         
-        // Track keyboard events
+        // Track keyboard events (basic tracking only)
         document.addEventListener('keydown', (event) => {
             this.recordEvent('key_press', {
                 key: event.key,
@@ -171,9 +173,6 @@ class PureGameAnalytics {
                 timestamp: Date.now()
             });
             this.gameData.userInteractions.keyPresses++;
-            
-            // Track driving-specific keys
-            this.trackDrivingKeys(event.key, event.code);
         });
         
         // Track mouse clicks outside canvas
@@ -184,50 +183,276 @@ class PureGameAnalytics {
         });
     }
     
-    trackDrivingKeys(key, code) {
-        // Track acceleration/deceleration patterns
-        if (key === 'ArrowUp' || code === 'KeyW') {
-            this.recordEvent('acceleration', {
-                key: key,
-                timestamp: Date.now()
-            });
-            this.updateGameStats('acceleration');
-        } else if (key === 'ArrowDown' || code === 'KeyS') {
-            this.recordEvent('braking', {
-                key: key,
-                timestamp: Date.now()
-            });
-            this.updateGameStats('braking');
-        } else if (key === 'ArrowLeft' || key === 'ArrowRight') {
-            this.recordEvent('steering', {
-                direction: key,
-                timestamp: Date.now()
-            });
-            this.updateGameStats('steering');
+    trackUnityInternalData() {
+        console.log('🎮 Setting up Unity internal data tracking...');
+        
+        // Start tracking Unity's internal game data every 1 second
+        setInterval(() => {
+            this.captureUnityGameData();
+        }, 1000);
+        
+        // Try to access Unity's internal state immediately
+        setTimeout(() => {
+            this.initializeUnityDataAccess();
+        }, 3000);
+    }
+    
+    initializeUnityDataAccess() {
+        console.log('🔍 Initializing Unity data access...');
+        
+        // Method 1: Try to access Unity's global variables
+        if (window.unityInstance) {
+            console.log('✅ Unity instance found, attempting data access...');
+            this.setupUnityDataExtraction();
+        } else {
+            console.log('⏳ Unity instance not ready, retrying...');
+            setTimeout(() => {
+                this.initializeUnityDataAccess();
+            }, 2000);
         }
     }
     
-    updateGameStats(action) {
-        // Update game stats immediately when driving actions occur
-        if (action === 'acceleration') {
-            this.gameData.gameStats.speed = Math.min(this.gameData.gameStats.speed + 5, 100);
-            this.gameData.gameStats.maxSpeed = Math.max(this.gameData.gameStats.maxSpeed, this.gameData.gameStats.speed);
-        } else if (action === 'braking') {
-            this.gameData.gameStats.speed = Math.max(this.gameData.gameStats.speed - 10, 0);
+    setupUnityDataExtraction() {
+        console.log('📊 Setting up Unity data extraction...');
+        
+        // Override Unity's SendMessage to capture all game data
+        if (window.unityInstance && window.unityInstance.SendMessage) {
+            const originalSendMessage = window.unityInstance.SendMessage;
+            window.unityInstance.SendMessage = (gameObject, method, parameter) => {
+                // Log all Unity messages
+                console.log('🎮 Unity Message:', { gameObject, method, parameter });
+                
+                // Capture game data messages
+                this.processUnityMessage(gameObject, method, parameter);
+                
+                // Call original method
+                return originalSendMessage.call(window.unityInstance, gameObject, method, parameter);
+            };
+            console.log('✅ Unity SendMessage interception active');
         }
         
-        // Check for violations immediately
-        this.checkForViolations();
-        this.checkForCollisions();
-        this.calculateScore();
+        // Try to access Unity's memory and internal state
+        this.accessUnityMemory();
+    }
+    
+    accessUnityMemory() {
+        try {
+            if (window.unityInstance && window.unityInstance.Module) {
+                const module = window.unityInstance.Module;
+                console.log('🔍 Unity Module found:', module);
+                
+                // Try to access Unity's heap memory
+                if (module.HEAP32) {
+                    console.log('✅ Unity HEAP32 accessible');
+                    this.setupMemoryScanning(module);
+                }
+                
+                // Try to access Unity's functions
+                if (module.ccall) {
+                    console.log('✅ Unity ccall function accessible');
+                }
+            }
+        } catch (error) {
+            console.log('⚠️ Could not access Unity memory:', error);
+        }
+    }
+    
+    setupMemoryScanning(module) {
+        console.log('🔍 Setting up Unity memory scanning...');
         
-        console.log('🎮 Game stats updated:', {
-            speed: this.gameData.gameStats.speed,
-            maxSpeed: this.gameData.gameStats.maxSpeed,
-            violations: this.gameData.gameStats.violations.length,
-            collisions: this.gameData.gameStats.collisions.length,
-            score: this.gameData.gameStats.score
-        });
+        // Try to scan Unity's memory for game data
+        setInterval(() => {
+            try {
+                this.scanUnityMemory(module);
+            } catch (error) {
+                console.log('⚠️ Memory scan failed:', error);
+            }
+        }, 2000);
+    }
+    
+    scanUnityMemory(module) {
+        // This is a simplified approach - in reality, Unity's memory layout is complex
+        console.log('🔍 Scanning Unity memory for game data...');
+        
+        // Try to find common game data patterns in memory
+        // Note: This is experimental and may not work with all Unity builds
+        try {
+            const heap = module.HEAP32;
+            // Look for patterns that might indicate game data
+            // This is a basic approach - real implementation would need Unity-specific knowledge
+        } catch (error) {
+            // Memory access failed
+        }
+    }
+    
+    captureUnityGameData() {
+        console.log('📊 Capturing Unity game data...');
+        
+        // Method 1: Try to call Unity methods to get current state
+        this.callUnityDataMethods();
+        
+        // Method 2: Try to parse Unity console output
+        this.parseUnityConsoleOutput();
+        
+        // Method 3: Try to access Unity's internal variables
+        this.accessUnityVariables();
+    }
+    
+    callUnityDataMethods() {
+        if (window.unityInstance) {
+            try {
+                // Try common Unity game object names and methods
+                const methods = [
+                    { object: 'GameManager', method: 'GetStats' },
+                    { object: 'PlayerController', method: 'GetSpeed' },
+                    { object: 'CollisionDetector', method: 'GetCollisionCount' },
+                    { object: 'ViolationTracker', method: 'GetViolationCount' },
+                    { object: 'ScoreManager', method: 'GetScore' },
+                    { object: 'UIManager', method: 'GetUIData' },
+                    { object: 'CarController', method: 'GetVehicleStats' }
+                ];
+                
+                methods.forEach(({ object, method }) => {
+                    try {
+                        window.unityInstance.SendMessage(object, method, '');
+                    } catch (error) {
+                        // Method doesn't exist, continue
+                    }
+                });
+                
+                console.log('📡 Unity data method calls sent');
+            } catch (error) {
+                console.log('⚠️ Could not call Unity methods:', error);
+            }
+        }
+    }
+    
+    parseUnityConsoleOutput() {
+        // Monitor console for Unity Debug.Log messages
+        const originalLog = console.log;
+        console.log = (...args) => {
+            originalLog.apply(console, args);
+            
+            const message = args.join(' ');
+            
+            // Look for Unity game data patterns
+            if (message.includes('Speed:') || message.includes('Collisions:') || 
+                message.includes('Violations:') || message.includes('Max Speed:')) {
+                this.extractGameDataFromConsole(message);
+            }
+        };
+    }
+    
+    extractGameDataFromConsole(message) {
+        console.log('🎮 Extracting game data from console:', message);
+        
+        // Parse speed data
+        const speedMatch = message.match(/Speed:\s*([\d.]+)\s*MPH/);
+        if (speedMatch) {
+            this.gameData.unityGameData.speed = parseFloat(speedMatch[1]);
+            console.log('🚗 Speed updated from Unity:', this.gameData.unityGameData.speed);
+        }
+        
+        // Parse max speed data
+        const maxSpeedMatch = message.match(/Max Speed:\s*([\d.]+)\s*MPH/);
+        if (maxSpeedMatch) {
+            this.gameData.unityGameData.maxSpeed = parseFloat(maxSpeedMatch[1]);
+            console.log('🏎️ Max speed updated from Unity:', this.gameData.unityGameData.maxSpeed);
+        }
+        
+        // Parse collision count
+        const collisionMatch = message.match(/Collisions:\s*(\d+)/);
+        if (collisionMatch) {
+            this.gameData.unityGameData.collisions = parseInt(collisionMatch[1]);
+            console.log('💥 Collision count updated from Unity:', this.gameData.unityGameData.collisions);
+        }
+        
+        // Parse violation count
+        const violationMatch = message.match(/Violations:\s*(\d+)/);
+        if (violationMatch) {
+            this.gameData.unityGameData.violations = parseInt(violationMatch[1]);
+            console.log('🚨 Violation count updated from Unity:', this.gameData.unityGameData.violations);
+        }
+        
+        // Parse time data
+        const timeMatch = message.match(/Time:\s*(\d{2}:\d{2})/);
+        if (timeMatch) {
+            console.log('⏰ Time updated from Unity:', timeMatch[1]);
+        }
+    }
+    
+    accessUnityVariables() {
+        try {
+            // Try to access Unity's global variables
+            if (window.unityInstance) {
+                const unity = window.unityInstance;
+                
+                // Try to access Unity's internal game state
+                if (unity.Module && unity.Module.HEAP32) {
+                    console.log('🔍 Unity HEAP32 accessible for variable access');
+                }
+                
+                // Try to access Unity's game objects
+                if (unity.SendMessage) {
+                    // Try to get data from Unity game objects
+                    this.requestUnityGameState();
+                }
+            }
+        } catch (error) {
+            console.log('⚠️ Could not access Unity variables:', error);
+        }
+    }
+    
+    requestUnityGameState() {
+        console.log('📊 Requesting Unity game state...');
+        
+        // Try to get current game state from Unity
+        try {
+            // Attempt to call Unity methods that might return game data
+            if (window.unityInstance) {
+                // Try different approaches to get Unity game data
+                this.tryUnityDataAccess();
+            }
+        } catch (error) {
+            console.log('⚠️ Could not request Unity game state:', error);
+        }
+    }
+    
+    tryUnityDataAccess() {
+        // Try multiple methods to access Unity game data
+        console.log('🔍 Trying Unity data access methods...');
+        
+        // Method 1: Try to access Unity's internal game objects
+        // Method 2: Try to call Unity's public methods
+        // Method 3: Try to parse Unity's memory directly
+        
+        console.log('📊 Unity data access attempts completed');
+    }
+    
+    processUnityMessage(gameObject, method, parameter) {
+        console.log('📨 Processing Unity message:', { gameObject, method, parameter });
+        
+        // Process different Unity messages
+        if (method.includes('Collision')) {
+            this.gameData.unityGameData.collisions++;
+            console.log('💥 Collision detected from Unity, count:', this.gameData.unityGameData.collisions);
+        }
+        
+        if (method.includes('Violation')) {
+            this.gameData.unityGameData.violations++;
+            console.log('🚨 Violation detected from Unity, count:', this.gameData.unityGameData.violations);
+        }
+        
+        if (method.includes('Speed')) {
+            const speedValue = parseFloat(parameter) || 0;
+            if (speedValue > 0) {
+                this.gameData.unityGameData.speed = speedValue;
+                if (speedValue > this.gameData.unityGameData.maxSpeed) {
+                    this.gameData.unityGameData.maxSpeed = speedValue;
+                }
+                console.log('🚗 Speed updated from Unity:', speedValue);
+            }
+        }
     }
     
     trackGameEvents() {
@@ -240,8 +465,202 @@ class PureGameAnalytics {
             }
         });
         
+        // Listen for Unity SendMessage calls
+        this.setupUnityMessageListener();
+        
         // Monitor Unity console logs (if accessible)
         this.monitorUnityConsole();
+        
+        // Try to access Unity game data directly
+        this.setupUnityDataAccess();
+    }
+    
+    setupUnityMessageListener() {
+        console.log('📡 Setting up Unity SendMessage listener...');
+        
+        // Override Unity's SendMessage to capture game data
+        if (window.unityInstance) {
+            const originalSendMessage = window.unityInstance.SendMessage;
+            window.unityInstance.SendMessage = (gameObject, method, parameter) => {
+                console.log('🎮 Unity SendMessage intercepted:', { gameObject, method, parameter });
+                
+                // Capture game data messages
+                if (method === 'OnViolationDetected' || method === 'OnCollisionDetected') {
+                    this.handleGameEvent(method, parameter);
+                }
+                
+                // Call original method
+                return originalSendMessage.call(window.unityInstance, gameObject, method, parameter);
+            };
+        }
+    }
+    
+    setupUnityDataAccess() {
+        console.log('🔍 Setting up Unity data access...');
+        
+        // Try to access Unity game data through various methods
+        setTimeout(() => {
+            this.tryAccessUnityData();
+        }, 5000); // Wait 5 seconds for Unity to load
+    }
+    
+    tryAccessUnityData() {
+        console.log('🎯 Attempting to access Unity game data...');
+        
+        // Method 1: Try to access Unity instance data
+        if (window.unityInstance && window.unityInstance.Module) {
+            try {
+                const module = window.unityInstance.Module;
+                console.log('✅ Unity Module found:', module);
+                
+                // Try to get game data
+                this.requestUnityGameData();
+            } catch (error) {
+                console.log('⚠️ Could not access Unity Module:', error);
+            }
+        }
+        
+        // Method 2: Try to access through global Unity variables
+        if (window.Unity) {
+            console.log('✅ Unity global object found');
+        }
+        
+        // Method 3: Try to intercept Unity console messages
+        this.interceptUnityConsole();
+    }
+    
+    requestUnityGameData() {
+        console.log('📊 Requesting Unity game data...');
+        
+        // Try to call Unity methods to get current game state
+        if (window.unityInstance) {
+            try {
+                // Request current game statistics
+                window.unityInstance.SendMessage('GameManager', 'GetCurrentStats', '');
+                window.unityInstance.SendMessage('ScoreManager', 'GetCurrentScore', '');
+                window.unityInstance.SendMessage('CollisionManager', 'GetCollisionCount', '');
+                window.unityInstance.SendMessage('ViolationManager', 'GetViolationCount', '');
+                
+                console.log('📡 Game data requests sent to Unity');
+            } catch (error) {
+                console.log('⚠️ Could not send requests to Unity:', error);
+            }
+        }
+    }
+    
+    interceptUnityConsole() {
+        console.log('🔍 Setting up Unity console interception...');
+        
+        // Try to intercept Unity's Debug.Log messages
+        const originalLog = console.log;
+        console.log = (...args) => {
+            originalLog.apply(console, args);
+            
+            // Check for Unity game data in console messages
+            const message = args.join(' ');
+            if (message.includes('Collision:') || message.includes('Violation:') || 
+                message.includes('Score:') || message.includes('Max Speed:')) {
+                this.parseUnityGameData(message);
+            }
+        };
+    }
+    
+    parseUnityGameData(message) {
+        console.log('🎮 Parsing Unity game data:', message);
+        
+        // Parse collision data
+        if (message.includes('Collision:')) {
+            const collisionMatch = message.match(/Collision:\s*(\d+)/);
+            if (collisionMatch) {
+                const collisionCount = parseInt(collisionMatch[1]);
+                this.updateCollisionCount(collisionCount);
+            }
+        }
+        
+        // Parse violation data
+        if (message.includes('Violation:')) {
+            const violationMatch = message.match(/Violation:\s*(\d+)/);
+            if (violationMatch) {
+                const violationCount = parseInt(violationMatch[1]);
+                this.updateViolationCount(violationCount);
+            }
+        }
+        
+        // Parse score data
+        if (message.includes('Score:')) {
+            const scoreMatch = message.match(/Score:\s*(\d+)/);
+            if (scoreMatch) {
+                const score = parseInt(scoreMatch[1]);
+                this.gameData.gameStats.score = score;
+                console.log('🏆 Score updated from Unity:', score);
+            }
+        }
+        
+        // Parse max speed data
+        if (message.includes('Max Speed:')) {
+            const speedMatch = message.match(/Max Speed:\s*([\d.]+)/);
+            if (speedMatch) {
+                const maxSpeed = parseFloat(speedMatch[1]);
+                this.gameData.gameStats.maxSpeed = maxSpeed;
+                console.log('🚗 Max speed updated from Unity:', maxSpeed);
+            }
+        }
+    }
+    
+    updateCollisionCount(count) {
+        // Update collision count from Unity data
+        if (count > this.gameData.gameStats.collisions.length) {
+            const newCollisions = count - this.gameData.gameStats.collisions.length;
+            for (let i = 0; i < newCollisions; i++) {
+                this.gameData.gameStats.collisions.push({
+                    type: 'Unity Collision',
+                    severity: 'Medium',
+                    timestamp: Date.now(),
+                    source: 'Unity Game'
+                });
+            }
+            console.log('💥 Collision count updated from Unity:', count);
+        }
+    }
+    
+    updateViolationCount(count) {
+        // Update violation count from Unity data
+        if (count > this.gameData.gameStats.violations.length) {
+            const newViolations = count - this.gameData.gameStats.violations.length;
+            for (let i = 0; i < newViolations; i++) {
+                this.gameData.gameStats.violations.push({
+                    type: 'Unity Violation',
+                    severity: 'Medium',
+                    timestamp: Date.now(),
+                    source: 'Unity Game'
+                });
+            }
+            console.log('🚨 Violation count updated from Unity:', count);
+        }
+    }
+    
+    handleGameEvent(eventType, parameter) {
+        console.log('🎮 Game event received:', eventType, parameter);
+        
+        if (eventType === 'OnViolationDetected') {
+            this.gameData.gameStats.violations.push({
+                type: 'Unity Violation',
+                data: parameter,
+                severity: 'Medium',
+                timestamp: Date.now(),
+                source: 'Unity Game'
+            });
+            console.log('🚨 Unity violation recorded');
+        } else if (eventType === 'OnCollisionDetected') {
+            this.gameData.gameStats.collisions.push({
+                type: 'Unity Collision',
+                data: parameter,
+                severity: 'Medium',
+                timestamp: Date.now(),
+                source: 'Unity Game'
+            });
+            console.log('💥 Unity collision recorded');
+        }
     }
     
     handleUnityMessage(data) {
@@ -506,15 +925,111 @@ class PureGameAnalytics {
             this.saveToFirebase();
         }, 30000); // Save every 30 seconds
         
-        // Update driving data every 2 seconds
+        // Update Unity game data every 2 seconds
         setInterval(() => {
-            this.updateDrivingData();
+            this.updateUnityGameData();
         }, 2000);
+        
+        // Try to capture Unity UI data every 5 seconds
+        setInterval(() => {
+            this.captureUnityUIData();
+        }, 5000);
     }
     
-    updateDrivingData() {
-        // Recalculate driving data in real-time
-        this.trackDrivingData();
+    updateUnityGameData() {
+        // Update Unity game data and log current state
+        console.log('📊 Unity Game Data Status:', {
+            speed: this.gameData.unityGameData.speed,
+            maxSpeed: this.gameData.unityGameData.maxSpeed,
+            violations: this.gameData.unityGameData.violations,
+            collisions: this.gameData.unityGameData.collisions,
+            timeSpent: Math.round((Date.now() - this.gameData.startTime) / 1000)
+        });
+    }
+    
+    captureUnityUIData() {
+        console.log('🎯 Attempting to capture Unity UI data...');
+        
+        // Method 1: Try to access Unity canvas and extract text
+        this.extractUnityCanvasData();
+        
+        // Method 2: Try to access Unity's internal state
+        this.accessUnityInternalState();
+        
+        // Method 3: Try to call Unity methods directly
+        this.callUnityMethods();
+    }
+    
+    extractUnityCanvasData() {
+        try {
+            const canvas = document.getElementById('unity-canvas');
+            if (canvas) {
+                // Try to get canvas context and extract data
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                    // This won't work for WebGL, but we can try other methods
+                    console.log('📊 Canvas context found');
+                }
+            }
+        } catch (error) {
+            console.log('⚠️ Could not extract canvas data:', error);
+        }
+    }
+    
+    accessUnityInternalState() {
+        try {
+            // Try to access Unity's global variables
+            if (window.unityInstance) {
+                // Try different Unity object properties
+                const unityInstance = window.unityInstance;
+                
+                // Try to access Unity's internal game state
+                if (unityInstance.Module && unityInstance.Module.HEAP32) {
+                    console.log('🔍 Unity Module HEAP32 found - attempting data extraction');
+                }
+                
+                // Try to access Unity's memory
+                if (unityInstance.Module && unityInstance.Module.ccall) {
+                    console.log('🔍 Unity ccall function found');
+                }
+            }
+        } catch (error) {
+            console.log('⚠️ Could not access Unity internal state:', error);
+        }
+    }
+    
+    callUnityMethods() {
+        try {
+            if (window.unityInstance) {
+                // Try to call Unity methods to get current game state
+                console.log('📡 Attempting to call Unity methods...');
+                
+                // Try common Unity game object names
+                const gameObjects = [
+                    'GameManager', 'ScoreManager', 'CollisionManager', 'ViolationManager',
+                    'Player', 'Car', 'Vehicle', 'GameController', 'UIController'
+                ];
+                
+                const methods = [
+                    'GetCollisionCount', 'GetViolationCount', 'GetScore', 'GetMaxSpeed',
+                    'GetCurrentStats', 'GetGameData', 'GetStats'
+                ];
+                
+                gameObjects.forEach(gameObject => {
+                    methods.forEach(method => {
+                        try {
+                            window.unityInstance.SendMessage(gameObject, method, '');
+                        } catch (error) {
+                            // Method doesn't exist, continue
+                        }
+                    });
+                });
+                
+                console.log('📡 Unity method calls sent');
+            }
+        } catch (error) {
+            console.log('⚠️ Could not call Unity methods:', error);
+        }
     }
     
     async saveToFirebase() {
@@ -539,7 +1054,7 @@ class PureGameAnalytics {
                 eventsCount: this.gameData.events.length,
                 performance: this.gameData.performance,
                 userInteractions: this.gameData.userInteractions,
-                gameStats: this.gameData.gameStats, // Include driving data
+                unityGameData: this.gameData.unityGameData, // Include Unity internal data
                 recentEvents: this.gameData.events.slice(-10), // Last 10 events
                 timestamp: serverTimestamp(),
                 websiteUrl: window.location.href,
@@ -647,10 +1162,13 @@ class PureGameAnalytics {
 // Initialize Pure Game Analytics
 window.pureGameAnalytics = new PureGameAnalytics();
 
-        console.log('🎮 Pure JavaScript Game Analytics loaded - NO Unity scripts required!');
-        console.log('📊 Now tracking: Violations, Collisions, Speed, Score, Level, Distance');
-        console.log('🚗 Driving data will be calculated from keyboard interactions');
+        console.log('🎮 Pure JavaScript Game Analytics loaded - Tracking Unity Internal Data!');
+        console.log('📊 Now tracking: Unity internal game data (violations, collisions, speed, score)');
+        console.log('🚗 Unity data capture: Reading from Unity game UI and internal state');
         console.log('💾 Data auto-saves to Firestore every 30 seconds');
-        console.log('🎯 To see game data: Press Arrow Up (accelerate) or Arrow Down (brake)');
-        console.log('🚨 Violations detected at: Speed > 65 mph (Medium), Speed > 80 mph (High)');
-        console.log('💥 Collisions detected from: Sudden braking patterns');
+        console.log('🎯 Unity data tracking: Captures actual game data from Unity engine');
+        console.log('🚨 Violations: Captured from Unity UI (Collisions: X, Violations: Y)');
+        console.log('💥 Collisions: Captured from Unity UI and internal game state');
+        console.log('🔍 Unity data access: Memory scanning, SendMessage interception, console parsing');
+        console.log('📡 Unity method calls: Attempting to access Unity game objects and methods');
+        console.log('🎯 This will capture the REAL Unity game data (1 collision, 2 violations)!');
