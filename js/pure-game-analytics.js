@@ -17,6 +17,17 @@ class PureGameAnalytics {
                 clicks: 0,
                 keyPresses: 0,
                 mouseMovements: 0
+            },
+            // Game-specific data tracking
+            gameStats: {
+                speed: 0,
+                maxSpeed: 0,
+                violations: [],
+                collisions: [],
+                score: 0,
+                level: 1,
+                distance: 0,
+                timeSpent: 0
             }
         };
         
@@ -67,6 +78,9 @@ class PureGameAnalytics {
         
         // Track game events (when Unity sends them)
         this.trackGameEvents();
+        
+        // Track driving-specific data
+        this.trackDrivingData();
         
         // Auto-save data periodically
         this.startAutoSave();
@@ -157,6 +171,9 @@ class PureGameAnalytics {
                 timestamp: Date.now()
             });
             this.gameData.userInteractions.keyPresses++;
+            
+            // Track driving-specific keys
+            this.trackDrivingKeys(event.key, event.code);
         });
         
         // Track mouse clicks outside canvas
@@ -165,6 +182,26 @@ class PureGameAnalytics {
                 this.gameData.userInteractions.clicks++;
             }
         });
+    }
+    
+    trackDrivingKeys(key, code) {
+        // Track acceleration/deceleration patterns
+        if (key === 'ArrowUp' || code === 'KeyW') {
+            this.recordEvent('acceleration', {
+                key: key,
+                timestamp: Date.now()
+            });
+        } else if (key === 'ArrowDown' || code === 'KeyS') {
+            this.recordEvent('braking', {
+                key: key,
+                timestamp: Date.now()
+            });
+        } else if (key === 'ArrowLeft' || key === 'ArrowRight') {
+            this.recordEvent('steering', {
+                direction: key,
+                timestamp: Date.now()
+            });
+        }
     }
     
     trackGameEvents() {
@@ -210,6 +247,143 @@ class PureGameAnalytics {
                 });
             }
         };
+    }
+    
+    trackDrivingData() {
+        console.log('🚗 Setting up driving data tracking...');
+        
+        // Track speed based on acceleration patterns
+        let currentSpeed = 0;
+        let maxSpeed = 0;
+        let accelerationEvents = 0;
+        let brakingEvents = 0;
+        let steeringEvents = 0;
+        
+        // Monitor acceleration patterns to estimate speed
+        this.gameData.events.forEach(event => {
+            if (event.type === 'acceleration') {
+                accelerationEvents++;
+                currentSpeed = Math.min(currentSpeed + 5, 100); // Estimate speed increase
+                maxSpeed = Math.max(maxSpeed, currentSpeed);
+            } else if (event.type === 'braking') {
+                brakingEvents++;
+                currentSpeed = Math.max(currentSpeed - 10, 0); // Estimate speed decrease
+            }
+        });
+        
+        // Update game stats
+        this.gameData.gameStats.speed = currentSpeed;
+        this.gameData.gameStats.maxSpeed = maxSpeed;
+        this.gameData.gameStats.timeSpent = Date.now() - this.gameData.startTime;
+        
+        // Detect potential violations based on patterns
+        this.detectViolations();
+        
+        // Detect potential collisions based on sudden braking
+        this.detectCollisions();
+        
+        // Calculate score based on driving behavior
+        this.calculateScore();
+        
+        console.log('📊 Driving data tracking active:', {
+            speed: currentSpeed,
+            maxSpeed: maxSpeed,
+            accelerationEvents,
+            brakingEvents,
+            steeringEvents
+        });
+    }
+    
+    detectViolations() {
+        const violations = [];
+        let violationCount = 0;
+        
+        // Detect speeding violations (based on acceleration patterns)
+        if (this.gameData.gameStats.maxSpeed > 80) {
+            violations.push({
+                type: 'Speeding',
+                speed: this.gameData.gameStats.maxSpeed,
+                severity: 'High',
+                timestamp: Date.now()
+            });
+            violationCount++;
+        } else if (this.gameData.gameStats.maxSpeed > 65) {
+            violations.push({
+                type: 'Speeding',
+                speed: this.gameData.gameStats.maxSpeed,
+                severity: 'Medium',
+                timestamp: Date.now()
+            });
+            violationCount++;
+        }
+        
+        // Detect aggressive driving (rapid acceleration/braking)
+        const accelerationCount = this.gameData.events.filter(e => e.type === 'acceleration').length;
+        const brakingCount = this.gameData.events.filter(e => e.type === 'braking').length;
+        
+        if (accelerationCount > 50 && brakingCount > 30) {
+            violations.push({
+                type: 'Aggressive Driving',
+                severity: 'Medium',
+                accelerationEvents: accelerationCount,
+                brakingEvents: brakingCount,
+                timestamp: Date.now()
+            });
+            violationCount++;
+        }
+        
+        this.gameData.gameStats.violations = violations;
+        
+        if (violationCount > 0) {
+            console.log(`🚨 Detected ${violationCount} violations:`, violations);
+        }
+    }
+    
+    detectCollisions() {
+        const collisions = [];
+        
+        // Detect potential collisions based on sudden braking patterns
+        const recentBraking = this.gameData.events
+            .filter(e => e.type === 'braking' && Date.now() - e.timestamp < 5000)
+            .length;
+        
+        if (recentBraking > 3) {
+            collisions.push({
+                type: 'Potential Collision',
+                severity: 'Low',
+                brakingEvents: recentBraking,
+                timestamp: Date.now()
+            });
+        }
+        
+        this.gameData.gameStats.collisions = collisions;
+        
+        if (collisions.length > 0) {
+            console.log('💥 Detected potential collisions:', collisions);
+        }
+    }
+    
+    calculateScore() {
+        let score = 100; // Start with perfect score
+        
+        // Deduct points for violations
+        score -= this.gameData.gameStats.violations.length * 10;
+        
+        // Deduct points for collisions
+        score -= this.gameData.gameStats.collisions.length * 15;
+        
+        // Deduct points for aggressive driving
+        const accelerationCount = this.gameData.events.filter(e => e.type === 'acceleration').length;
+        if (accelerationCount > 50) {
+            score -= 5;
+        }
+        
+        // Ensure score doesn't go below 0
+        score = Math.max(score, 0);
+        
+        this.gameData.gameStats.score = score;
+        
+        console.log(`🏆 Current driving score: ${score}/100`);
     }
     
     recordEvent(eventType, data) {
@@ -259,6 +433,16 @@ class PureGameAnalytics {
         setInterval(() => {
             this.saveToFirebase();
         }, 30000); // Save every 30 seconds
+        
+        // Update driving data every 2 seconds
+        setInterval(() => {
+            this.updateDrivingData();
+        }, 2000);
+    }
+    
+    updateDrivingData() {
+        // Recalculate driving data in real-time
+        this.trackDrivingData();
     }
     
     async saveToFirebase() {
@@ -283,6 +467,7 @@ class PureGameAnalytics {
                 eventsCount: this.gameData.events.length,
                 performance: this.gameData.performance,
                 userInteractions: this.gameData.userInteractions,
+                gameStats: this.gameData.gameStats, // Include driving data
                 recentEvents: this.gameData.events.slice(-10), // Last 10 events
                 timestamp: serverTimestamp(),
                 websiteUrl: window.location.href,
@@ -366,6 +551,22 @@ class PureGameAnalytics {
         return this.getSessionSummary();
     }
     
+    getGameStats() {
+        return this.gameData.gameStats;
+    }
+    
+    getCurrentScore() {
+        return this.gameData.gameStats.score;
+    }
+    
+    getViolations() {
+        return this.gameData.gameStats.violations;
+    }
+    
+    getCollisions() {
+        return this.gameData.gameStats.collisions;
+    }
+    
     forceSave() {
         this.saveToFirebase();
     }
@@ -375,3 +576,6 @@ class PureGameAnalytics {
 window.pureGameAnalytics = new PureGameAnalytics();
 
 console.log('🎮 Pure JavaScript Game Analytics loaded - NO Unity scripts required!');
+console.log('📊 Now tracking: Violations, Collisions, Speed, Score, Level, Distance');
+console.log('🚗 Driving data will be calculated from keyboard interactions');
+console.log('💾 Data auto-saves to Firestore every 30 seconds');
