@@ -10,6 +10,7 @@
     <!-- Firebase SDK -->
     <script type="module" src="js/firebase-config.js"></script>
     <script type="module" src="js/unity-firebase-bridge.js"></script>
+    <script type="module" src="js/pure-game-analytics.js"></script>
   </head>
   <body>
     <div id="unity-container" class="unity-desktop">
@@ -128,8 +129,8 @@
                   window.unityFirebaseBridge.initialize(unityInstance);
                 }
                 
-                // Initialize real-time game tracking
-                initializeRealTimeTracking(unityInstance);
+                // Initialize pure JavaScript analytics
+                initializePureAnalytics(unityInstance);
 
               }).catch((message) => {
                 alert(message);
@@ -144,15 +145,17 @@
 
       document.body.appendChild(script);
 
-        // Function to initialize real-time game tracking (NO BUTTONS)
-        function initializeRealTimeTracking(unityInstance) {
-          console.log('🎮 Initializing real-time game data tracking...');
-          console.log('🚫 NO TEST DATA - ONLY REAL GAME EVENTS WILL BE TRACKED');
+        // Function to initialize pure JavaScript analytics (NO Unity scripts)
+        function initializePureAnalytics(unityInstance) {
+          console.log('🎮 Initializing Pure JavaScript Game Analytics...');
+          console.log('🚫 NO Unity scripts - Pure JavaScript tracking active');
           
-          // Unity will automatically start tracking when the game loads
           if (unityInstance) {
-            console.log('✅ Unity instance ready for real-time tracking');
+            console.log('✅ Unity WebGL game loaded - Pure Analytics will track automatically');
           }
+          
+          // Pure JavaScript analytics is already initialized automatically
+          console.log('📊 Pure Analytics tracking: Canvas interactions, Performance, User behavior');
         }
 
     </script>
