@@ -13,8 +13,8 @@ public class SimpleGameDataManager : MonoBehaviour
     
     [Header("Real-Time Tracking")]
     [SerializeField] private bool enableRealTimeTracking = true;
-    [SerializeField] private float trackingUpdateInterval = 0.1f; // 10 times per second
-    [SerializeField] private float sessionSaveInterval = 30f; // Auto-save every 30 seconds
+    [SerializeField] private float trackingUpdateInterval = 0.05f; // 20 times per second - MORE responsive
+    [SerializeField] private float sessionSaveInterval = 15f; // Auto-save every 15 seconds - MORE frequent
     
     [Header("Speed & Violation Settings")]
     [SerializeField] private float speedLimit = 50f; // mph
@@ -58,18 +58,25 @@ public class SimpleGameDataManager : MonoBehaviour
         trackingTimer += Time.deltaTime;
         sessionSaveTimer += Time.deltaTime;
         
-        // Real-time speed and position tracking
+        // Real-time speed and position tracking - MORE responsive
         if (trackingTimer >= trackingUpdateInterval)
         {
             UpdateRealTimeTracking();
             trackingTimer = 0f;
         }
         
-        // Auto-save session data
+        // Auto-save session data - MORE frequent
         if (sessionSaveTimer >= sessionSaveInterval)
         {
             UpdateSessionStats();
             sessionSaveTimer = 0f;
+        }
+        
+        // Emergency save if too many events queued
+        if (dataQueue.Count > 50)
+        {
+            LogMessage("⚠️ Emergency: Too many events queued, forcing save...");
+            UpdateSessionStats();
         }
     }
     

@@ -127,7 +127,12 @@ class UnityFirebaseBridge {
       
       // Analytics
       getUserStats: () => this.getUserStats(),
-      getSessionData: () => this.getCurrentSessionData()
+      getSessionData: () => this.getCurrentSessionData(),
+      
+      // Universal tracking
+      recordGameEvent: (eventData) => this.handleGameEvent(eventData),
+      recordInputEvent: (inputData) => this.handleInputEvent(inputData),
+      recordUniversalEvent: (universalData) => this.handleUniversalEvent(universalData)
     };
     
     console.log('✅ Unity callbacks ready:', Object.keys(window.UnityFirebase));
@@ -630,6 +635,87 @@ class UnityFirebaseBridge {
     if (impactForce > 25) return 75;  // Major damage
     if (impactForce > 10) return 50;  // Moderate damage
     return 25; // Minor damage
+  }
+
+  // Handle universal game events
+  async handleGameEvent(eventData) {
+    try {
+      const data = typeof eventData === 'string' ? JSON.parse(eventData) : eventData;
+      
+      const event = {
+        userId: this.userId,
+        gameId: 'DriverEdSimulator_Module1A',
+        eventType: data.eventType || 'GameEvent',
+        eventData: data.eventData || '',
+        timestamp: serverTimestamp(),
+        websiteUrl: window.location.href,
+        sessionId: this.getSessionId()
+      };
+
+      console.log('🎮 FIREBASE: Saving game event:', event);
+      const docRef = await addDoc(collection(this.db, 'gameEvents'), event);
+      console.log('✅ FIREBASE: Game event saved with ID:', docRef.id);
+      
+      return { success: true, id: docRef.id };
+    } catch (error) {
+      console.error('❌ FIREBASE: Error saving game event:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Handle input events
+  async handleInputEvent(inputData) {
+    try {
+      const data = typeof inputData === 'string' ? JSON.parse(inputData) : inputData;
+      
+      const input = {
+        userId: this.userId,
+        gameId: 'DriverEdSimulator_Module1A',
+        inputType: data.inputType || 'Input',
+        inputData: data.inputData || '',
+        timestamp: serverTimestamp(),
+        websiteUrl: window.location.href,
+        sessionId: this.getSessionId()
+      };
+
+      console.log('🖱️ FIREBASE: Saving input event:', input);
+      const docRef = await addDoc(collection(this.db, 'inputEvents'), input);
+      console.log('✅ FIREBASE: Input event saved with ID:', docRef.id);
+      
+      return { success: true, id: docRef.id };
+    } catch (error) {
+      console.error('❌ FIREBASE: Error saving input event:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Handle universal events (parsed data)
+  async handleUniversalEvent(universalData) {
+    try {
+      // Parse pipe-separated data: "TYPE|DATA1|DATA2|DATA3|TIMESTAMP"
+      const parts = universalData.split('|');
+      const eventType = parts[0] || 'Unknown';
+      
+      const event = {
+        userId: this.userId,
+        gameId: 'DriverEdSimulator_Module1A',
+        eventType: eventType,
+        data: parts.slice(1), // All data after type
+        rawData: universalData,
+        timestamp: serverTimestamp(),
+        websiteUrl: window.location.href,
+        sessionId: this.getSessionId()
+      };
+
+      console.log('🌐 FIREBASE: Saving universal event:', event);
+      const docRef = await addDoc(collection(this.db, 'universalEvents'), event);
+      console.log('✅ FIREBASE: Universal event saved with ID:', docRef.id);
+      
+      return { success: true, id: docRef.id };
+    } catch (error) {
+      console.error('❌ FIREBASE: Error saving universal event:', error);
+      return { success: false, error: error.message };
+    }
   }
 }
 
