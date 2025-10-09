@@ -191,17 +191,43 @@ class PureGameAnalytics {
                 key: key,
                 timestamp: Date.now()
             });
+            this.updateGameStats('acceleration');
         } else if (key === 'ArrowDown' || code === 'KeyS') {
             this.recordEvent('braking', {
                 key: key,
                 timestamp: Date.now()
             });
+            this.updateGameStats('braking');
         } else if (key === 'ArrowLeft' || key === 'ArrowRight') {
             this.recordEvent('steering', {
                 direction: key,
                 timestamp: Date.now()
             });
+            this.updateGameStats('steering');
         }
+    }
+    
+    updateGameStats(action) {
+        // Update game stats immediately when driving actions occur
+        if (action === 'acceleration') {
+            this.gameData.gameStats.speed = Math.min(this.gameData.gameStats.speed + 5, 100);
+            this.gameData.gameStats.maxSpeed = Math.max(this.gameData.gameStats.maxSpeed, this.gameData.gameStats.speed);
+        } else if (action === 'braking') {
+            this.gameData.gameStats.speed = Math.max(this.gameData.gameStats.speed - 10, 0);
+        }
+        
+        // Check for violations immediately
+        this.checkForViolations();
+        this.checkForCollisions();
+        this.calculateScore();
+        
+        console.log('🎮 Game stats updated:', {
+            speed: this.gameData.gameStats.speed,
+            maxSpeed: this.gameData.gameStats.maxSpeed,
+            violations: this.gameData.gameStats.violations.length,
+            collisions: this.gameData.gameStats.collisions.length,
+            score: this.gameData.gameStats.score
+        });
     }
     
     trackGameEvents() {
@@ -386,6 +412,52 @@ class PureGameAnalytics {
         console.log(`🏆 Current driving score: ${score}/100`);
     }
     
+    checkForViolations() {
+        // Check for speeding violations
+        if (this.gameData.gameStats.maxSpeed > 80 && !this.hasViolation('Speeding', 'High')) {
+            this.gameData.gameStats.violations.push({
+                type: 'Speeding',
+                speed: this.gameData.gameStats.maxSpeed,
+                severity: 'High',
+                timestamp: Date.now()
+            });
+            console.log('🚨 HIGH SPEEDING VIOLATION DETECTED!', this.gameData.gameStats.maxSpeed + ' mph');
+        } else if (this.gameData.gameStats.maxSpeed > 65 && !this.hasViolation('Speeding', 'Medium')) {
+            this.gameData.gameStats.violations.push({
+                type: 'Speeding',
+                speed: this.gameData.gameStats.maxSpeed,
+                severity: 'Medium',
+                timestamp: Date.now()
+            });
+            console.log('⚠️ MEDIUM SPEEDING VIOLATION DETECTED!', this.gameData.gameStats.maxSpeed + ' mph');
+        }
+    }
+    
+    checkForCollisions() {
+        // Check for sudden braking patterns (collision indicators)
+        const recentBraking = this.gameData.events
+            .filter(e => e.type === 'braking' && Date.now() - e.timestamp < 3000)
+            .length;
+        
+        if (recentBraking > 2 && !this.hasCollision('Sudden Braking')) {
+            this.gameData.gameStats.collisions.push({
+                type: 'Sudden Braking',
+                severity: 'Low',
+                brakingEvents: recentBraking,
+                timestamp: Date.now()
+            });
+            console.log('💥 POTENTIAL COLLISION DETECTED! Sudden braking pattern');
+        }
+    }
+    
+    hasViolation(type, severity) {
+        return this.gameData.gameStats.violations.some(v => v.type === type && v.severity === severity);
+    }
+    
+    hasCollision(type) {
+        return this.gameData.gameStats.collisions.some(c => c.type === type);
+    }
+    
     recordEvent(eventType, data) {
         const event = {
             type: eventType,
@@ -475,7 +547,7 @@ class PureGameAnalytics {
             };
             
             console.log('💾 Saving session data to Firebase...', sessionData);
-            const docRef = await addDoc(collection(window.firebaseDB, 'pureAnalytics'), sessionData);
+            const docRef = await addDoc(collection(window.firebaseDB, 'game1'), sessionData);
             console.log('✅ Session data saved with ID:', docRef.id);
             
             // Process queued events
@@ -575,7 +647,10 @@ class PureGameAnalytics {
 // Initialize Pure Game Analytics
 window.pureGameAnalytics = new PureGameAnalytics();
 
-console.log('🎮 Pure JavaScript Game Analytics loaded - NO Unity scripts required!');
-console.log('📊 Now tracking: Violations, Collisions, Speed, Score, Level, Distance');
-console.log('🚗 Driving data will be calculated from keyboard interactions');
-console.log('💾 Data auto-saves to Firestore every 30 seconds');
+        console.log('🎮 Pure JavaScript Game Analytics loaded - NO Unity scripts required!');
+        console.log('📊 Now tracking: Violations, Collisions, Speed, Score, Level, Distance');
+        console.log('🚗 Driving data will be calculated from keyboard interactions');
+        console.log('💾 Data auto-saves to Firestore every 30 seconds');
+        console.log('🎯 To see game data: Press Arrow Up (accelerate) or Arrow Down (brake)');
+        console.log('🚨 Violations detected at: Speed > 65 mph (Medium), Speed > 80 mph (High)');
+        console.log('💥 Collisions detected from: Sudden braking patterns');
