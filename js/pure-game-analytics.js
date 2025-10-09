@@ -298,20 +298,11 @@ class ProfessionalGameAnalytics {
     }
     
     setupUnityIntegration() {
-        console.log('🎮 Setting up Unity integration...');
+        console.log('🎮 Unity integration DISABLED to prevent freezing...');
         
-        try {
-            // Wait for Unity to be ready
-            this.waitForUnity();
-            
-            // Setup Unity data capture
-            this.setupUnityDataCapture();
-            
-            console.log('✅ Unity integration setup complete');
-        } catch (error) {
-            console.error('❌ Unity integration failed:', error);
-            this.handleError('Unity Integration', error);
-        }
+        // Skip all Unity integration to prevent freezing
+        console.log('⚠️ Unity integration skipped - using minimal tracking only');
+        console.log('✅ Unity-safe mode active');
     }
     
     async waitForUnity() {
@@ -333,24 +324,11 @@ class ProfessionalGameAnalytics {
     }
     
     setupUnityDataCapture() {
-        console.log('📊 Setting up Unity data capture...');
+        console.log('📊 Unity data capture DISABLED to prevent freezing...');
         
-        try {
-            // Method 1: Console parsing (most reliable)
-            this.setupConsoleParsing();
-            
-            // Method 2: DOM extraction (fallback)
-            this.setupDOMExtraction();
-            
-            // Method 3: Unity messages (if available)
-            if (this.isUnityReady) {
-                this.setupUnityMessages();
-            }
-            
-            console.log('✅ Unity data capture setup complete');
-        } catch (error) {
-            this.handleError('Unity Data Capture', error);
-        }
+        // Skip all Unity data capture to prevent freezing
+        console.log('⚠️ Unity data capture skipped - using minimal tracking only');
+        console.log('✅ Unity-safe data capture active');
     }
     
     setupConsoleParsing() {
@@ -412,42 +390,52 @@ class ProfessionalGameAnalytics {
     }
     
     startProfessionalTracking() {
-        console.log('🚀 Starting professional tracking...');
+        console.log('🚀 Starting MINIMAL tracking (Unity-safe mode)...');
         
         try {
-            // Start auto-save to Firebase
+            // MINIMAL tracking - only basic interactions, no Unity access
+            setInterval(() => {
+                this.trackBasicInteractions();
+            }, 10000); // Only every 10 seconds
+            
+            // Save to Firebase less frequently
             setInterval(() => {
                 this.saveToFirebase();
-            }, 30000);
+            }, 60000); // Every 60 seconds
             
-            // Start comprehensive data capture
-            setInterval(() => {
-                this.captureAllGameData();
-            }, 1000);
-            
-            console.log('✅ Professional tracking started');
+            console.log('✅ Minimal tracking started - Unity will remain responsive');
+            console.log('⚠️ No Unity DOM scanning to prevent freezing');
         } catch (error) {
-            this.handleError('Professional Tracking', error);
+            this.handleError('Minimal Tracking', error);
         }
     }
     
-    captureAllGameData() {
+    trackBasicInteractions() {
         try {
-            // Capture data from all available sources
-            if (this.trackingMethods.consoleParsing) {
-                // Already handled by console.log override
+            // MINIMAL tracking - only basic browser interactions, no Unity access
+            console.log('📊 Tracking basic interactions (Unity-safe)...');
+            
+            // Track basic canvas interactions
+            const canvas = document.getElementById('unity-canvas');
+            if (canvas) {
+                this.gameData.performance.canvasSize = {
+                    width: canvas.width,
+                    height: canvas.height
+                };
             }
             
-            if (this.trackingMethods.domExtraction) {
-                this.extractGameDataFromDOM();
+            // Track basic performance
+            if (performance.memory) {
+                this.gameData.performance.memoryUsage = Math.round(performance.memory.usedJSHeapSize / 1024 / 1024);
             }
             
-            if (this.trackingMethods.unityMessages) {
-                // Already handled by SendMessage override
-            }
+            // Update time spent
+            this.gameData.gameStats.timeSpent = Math.round((Date.now() - this.gameData.startTime) / 1000);
+            
+            console.log('✅ Basic tracking completed safely');
             
         } catch (error) {
-            this.handleError('Data Capture', error);
+            this.handleError('Basic Interactions', error);
         }
     }
     
