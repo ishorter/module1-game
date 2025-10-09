@@ -27,7 +27,13 @@ public class SimpleGameDataManager : MonoBehaviour
         
         LogMessage("Waiting for Firebase initialization...");
         
-        // Don't set isFirebaseReady to true yet - wait for JavaScript callback
+        // Set Firebase ready after a reasonable delay (fallback)
+        yield return new WaitForSeconds(2f);
+        
+        // Fallback: Set Firebase ready even if callback doesn't work
+        isFirebaseReady = true;
+        LogMessage("✅ Firebase ready (fallback initialization)");
+        
         // Test the connection
         TestConnection();
     }

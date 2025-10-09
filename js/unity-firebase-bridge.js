@@ -72,7 +72,16 @@ class UnityFirebaseBridge {
       // Notify Unity that Firebase is ready
       if (this.unityInstance) {
         this.unityInstance.SendMessage('SimpleGameDataManager', 'OnFirebaseReady', 'connected');
+        this.unityInstance.SendMessage('GameDataManager', 'OnFirebaseReady', 'connected');
+        this.unityInstance.SendMessage('PerformanceDataManager', 'OnFirebaseReady', 'connected');
+        this.unityInstance.SendMessage('FirebaseDataSender', 'OnFirebaseReady', 'connected');
       }
+      
+      // Send a test violation to verify the system works
+      setTimeout(() => {
+        console.log('🎮 Sending test violation to verify system...');
+        this.handleViolation('Test Violation|65.5|Test Location|1');
+      }, 2000);
       
       return true;
     } catch (error) {
@@ -81,6 +90,9 @@ class UnityFirebaseBridge {
       // Notify Unity that Firebase failed
       if (this.unityInstance) {
         this.unityInstance.SendMessage('SimpleGameDataManager', 'OnFirebaseReady', 'failed');
+        this.unityInstance.SendMessage('GameDataManager', 'OnFirebaseReady', 'failed');
+        this.unityInstance.SendMessage('PerformanceDataManager', 'OnFirebaseReady', 'failed');
+        this.unityInstance.SendMessage('FirebaseDataSender', 'OnFirebaseReady', 'failed');
       }
       
       return false;
