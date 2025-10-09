@@ -20,77 +20,63 @@ public class SimpleGameDataManager : MonoBehaviour
         StartCoroutine(InitializeFirebase());
     }
     
-    void Awake()
-    {
-        // Ensure this GameObject persists across scenes
-        DontDestroyOnLoad(gameObject);
-    }
-    
     private IEnumerator InitializeFirebase()
     {
         // Wait for JavaScript bridge to be ready
         yield return new WaitForSeconds(3f);
         
-        // Initialize the JavaScript bridge
-        CallJavaScript("window.unityFirebaseBridge.initializeBridge", "");
+        LogMessage("Waiting for Firebase initialization...");
         
-        yield return new WaitForSeconds(1f);
-        
-        // Set Unity instance reference in JavaScript
-        CallJavaScript("window.unityFirebaseBridge.setUnityInstance", "");
-        
-        yield return new WaitForSeconds(0.5f);
-        
-        isFirebaseReady = true;
-        LogMessage("Firebase bridge ready for game data");
-        
-        // Test the connection with real data
+        // Don't set isFirebaseReady to true yet - wait for JavaScript callback
+        // Test the connection
         TestConnection();
-        
-        // Auto-generate some test data to verify system works
-        yield return new WaitForSeconds(2f);
-        GenerateTestData();
-    }
-    
-    private void GenerateTestData()
-    {
-        LogMessage("Generating test data to verify Firebase connection...");
-        
-        // Send test data
-        RecordViolation("Auto Test Violation", 65f, "Test Location");
-        
-        // Wait a bit then send more
-        Invoke(nameof(SendMoreTestData), 1f);
-    }
-    
-    private void SendMoreTestData()
-    {
-        RecordCollision("Auto Test Collision", "Test Object", 20f);
-        SaveProgress(1, 1000, 25f, 60f);
-        LogMessage("Test data generation complete - check Firestore console!");
     }
     
     private void TestConnection()
     {
-        if (isFirebaseReady)
+        LogMessage("Testing Firebase connection...");
+        // Send a test violation (will be queued if Firebase not ready)
+        RecordViolation("Test Connection", 50f, "Test Location");
+    }
+    
+    /// <summary>
+    /// Callback from JavaScript when Firebase is ready
+    /// </summary>
+    public void OnFirebaseReady(string status)
+    {
+        if (status == "connected")
         {
-            LogMessage("Testing Firebase connection...");
-            // Send a test violation
-            RecordViolation("Test Connection", 50f, "Test Location");
+            isFirebaseReady = true;
+            LogMessage("✅ Firebase connection confirmed - ready for game data");
+        }
+        else if (status == "failed")
+        {
+            isFirebaseReady = false;
+            LogMessage("❌ Firebase connection failed - check configuration");
         }
     }
     
     /// <summary>
-    /// Record a traffic violation - Simple version without JSON
+    /// Record a traffic violation - Enhanced version with better error handling
     /// </summary>
     public void RecordViolation(string violationType, float speed, string location)
     {
-        if (!isFirebaseReady) return;
+        if (!isFirebaseReady) 
+        {
+            LogMessage("Firebase not ready - violation not recorded");
+            return;
+        }
         
         totalViolations++;
         
-        // Send data directly to JavaScript without JSON
-        string data = $"{violationType}|{speed}|{location}|{totalViolations}";
+        // Clean data to avoid special characters that might cause issues
+        string cleanViolationType = violationType?.Replace("|", "_").Replace("\"", "'") ?? "Unknown";
+        string cleanLocation = location?.Replace("|", "_").Replace("\"", "'") ?? "Unknown";
+        
+        // Send data with better formatting
+        string data = $"{cleanViolationType}|{speed:F1}|{cleanLocation}|{totalViolations}";
+        
+        LogMessage($"Attempting to record violation: {data}");
         CallJavaScript("UnityFirebase.recordViolation", data);
         
         LogMessage($"Violation recorded: {violationType} at {speed} mph");
@@ -180,11 +166,23 @@ public class SimpleGameDataManager : MonoBehaviour
     {
         try
         {
+            // Ensure data is not null or empty
+            if (string.IsNullOrEmpty(data))
+            {
+                data = "";
+            }
+            
+            LogMessage($"Calling JavaScript: {methodName} with data: {data}");
+            
+            // Use Application.ExternalCall for WebGL
             Application.ExternalCall(methodName, data);
+            
+            LogMessage($"JavaScript call successful: {methodName}");
         }
         catch (System.Exception e)
         {
             LogMessage($"Error calling JavaScript method {methodName}: {e.Message}");
+            LogMessage($"Stack trace: {e.StackTrace}");
         }
     }
     

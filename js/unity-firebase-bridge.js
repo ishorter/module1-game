@@ -17,12 +17,28 @@ class UnityFirebaseBridge {
 
   // Initialize bridge with Unity instance
   async initialize(unityInstance) {
+    console.log('🔧 Initializing Unity Firebase Bridge...');
+    
     this.unityInstance = unityInstance;
     this.db = window.firebaseDB;
     
     if (!this.db) {
       console.error('❌ Firebase DB not available');
-      return false;
+      console.error('🔍 Checking Firebase initialization...');
+      
+      // Wait for Firebase to initialize
+      let attempts = 0;
+      while (!this.db && attempts < 10) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        this.db = window.firebaseDB;
+        attempts++;
+        console.log(`🔄 Firebase initialization attempt ${attempts}/10`);
+      }
+      
+      if (!this.db) {
+        console.error('❌ Firebase DB still not available after retries');
+        return false;
+      }
     }
 
     this.setupUnityCallbacks();
@@ -30,32 +46,46 @@ class UnityFirebaseBridge {
     console.log('✅ Unity Firebase Bridge initialized successfully');
     console.log('🎯 Ready to receive Unity calls');
     
+    // Test Firebase connection
+    await this.testFirebaseConnection();
+    
     return true;
   }
 
-  // Initialize bridge without Unity instance (for Unity to call)
-  async initializeBridge() {
-    this.db = window.firebaseDB;
-    
-    if (!this.db) {
-      console.error('❌ Firebase DB not available');
+
+  // Test Firebase connection
+  async testFirebaseConnection() {
+    try {
+      console.log('🧪 Testing Firebase connection...');
+      
+      // Try to write a test document
+      const testDoc = {
+        userId: this.userId,
+        test: true,
+        timestamp: new Date().toISOString(),
+        message: 'Firebase connection test'
+      };
+      
+      const docRef = await addDoc(collection(this.db, 'connectionTests'), testDoc);
+      console.log('✅ Firebase connection test successful:', docRef.id);
+      
+      // Notify Unity that Firebase is ready
+      if (this.unityInstance) {
+        this.unityInstance.SendMessage('SimpleGameDataManager', 'OnFirebaseReady', 'connected');
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('❌ Firebase connection test failed:', error);
+      
+      // Notify Unity that Firebase failed
+      if (this.unityInstance) {
+        this.unityInstance.SendMessage('SimpleGameDataManager', 'OnFirebaseReady', 'failed');
+      }
+      
       return false;
     }
-
-    this.setupUnityCallbacks();
-    this.isInitialized = true;
-    console.log('✅ Unity Firebase Bridge initialized successfully');
-    console.log('🎯 Ready to receive Unity calls');
-    
-    return true;
   }
-
-  // Set Unity instance reference
-  setUnityInstance(unityInstance) {
-    this.unityInstance = unityInstance;
-    console.log('✅ Unity instance reference set');
-  }
-
 
   // Test C# ↔ JavaScript communication (DISABLED - Real game data only)
   testCommunication() {
@@ -95,6 +125,9 @@ class UnityFirebaseBridge {
       recordCollision: (collisionData) => this.handleCollision(collisionData),
       recordDrivingEvent: (eventData) => this.handleDrivingEvent(eventData),
       
+      // Performance Data
+      savePerformanceData: (performanceData) => this.handlePerformanceData(performanceData),
+      
       // Session Management
       startSession: () => this.startSession(),
       endSession: () => this.endSession(),
@@ -111,6 +144,12 @@ class UnityFirebaseBridge {
   // Handle progress data from Unity
   async handleProgress(progressData) {
     try {
+      console.log('📊 FIREBASE: Received progress data:', progressData);
+      
+      if (!this.db) {
+        throw new Error('Firebase database not available');
+      }
+      
       let data;
       
       // Check if it's JSON or pipe-separated data
@@ -123,9 +162,16 @@ class UnityFirebaseBridge {
           completion: parseFloat(parts[2]) || 0,
           timeSpent: parseFloat(parts[3]) || 0
         };
+        console.log('📊 FIREBASE: Parsed pipe-separated data:', data);
       } else {
         // JSON format
-        data = typeof progressData === 'string' ? JSON.parse(progressData) : progressData;
+        try {
+          data = typeof progressData === 'string' ? JSON.parse(progressData) : progressData;
+          console.log('📊 FIREBASE: Parsed JSON data:', data);
+        } catch (jsonError) {
+          console.error('❌ FIREBASE: JSON parsing failed:', jsonError);
+          throw new Error('Invalid JSON format');
+        }
       }
       
       const progress = {
@@ -152,6 +198,13 @@ class UnityFirebaseBridge {
       return { success: true, id: docRef.id };
     } catch (error) {
       console.error('❌ FIREBASE: Error saving progress:', error);
+      console.error('❌ FIREBASE: Error details:', {
+        name: error.name,
+        message: error.message,
+        code: error.code,
+        stack: error.stack
+      });
+      
       if (this.unityInstance) {
         this.unityInstance.SendMessage('SimpleGameDataManager', 'OnProgressSaved', 'error');
       }
@@ -299,6 +352,72 @@ class UnityFirebaseBridge {
       return { success: true, id: docRef.id };
     } catch (error) {
       console.error('❌ FIREBASE: Error saving driving event:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Handle performance data from Unity
+  async handlePerformanceData(performanceData) {
+    try {
+      console.log('📊 FIREBASE: Received performance data:', performanceData);
+      
+      if (!this.db) {
+        throw new Error('Firebase database not available');
+      }
+      
+      let data;
+      
+      // Parse JSON data
+      try {
+        data = typeof performanceData === 'string' ? JSON.parse(performanceData) : performanceData;
+        console.log('📊 FIREBASE: Parsed performance data:', data);
+      } catch (jsonError) {
+        console.error('❌ FIREBASE: JSON parsing failed:', jsonError);
+        throw new Error('Invalid JSON format for performance data');
+      }
+      
+      const performance = {
+        userId: this.userId,
+        gameId: 'DriverEdSimulator_Module1A',
+        maxSpeedMPH: data.maxSpeedMPH || 0,
+        collisionCount: data.collisionCount || 0,
+        violationCount: data.violationCount || 0,
+        sessionDurationSeconds: data.sessionDurationSeconds || 0,
+        sessionDurationFormatted: data.sessionDurationFormatted || '00:00',
+        averageSpeed: data.averageSpeed || 0,
+        totalDistance: data.totalDistance || 0,
+        score: data.score || 0,
+        levelName: data.levelName || 'Unknown',
+        timestamp: serverTimestamp(),
+        originalTimestamp: data.timestamp || new Date().toISOString(),
+        websiteUrl: window.location.href,
+        sessionId: this.getSessionId()
+      };
+
+      console.log('🚀 FIREBASE: Saving performance data:', performance);
+      const docRef = await addDoc(collection(this.db, 'performanceData'), performance);
+      console.log('✅ FIREBASE: Performance data saved with ID:', docRef.id);
+      
+      // Notify Unity of success
+      if (this.unityInstance) {
+        this.unityInstance.SendMessage('PerformanceDataManager', 'OnPerformanceDataSaved', 'success');
+      }
+      
+      return { success: true, id: docRef.id };
+    } catch (error) {
+      console.error('❌ FIREBASE: Error saving performance data:', error);
+      console.error('❌ FIREBASE: Error details:', {
+        name: error.name,
+        message: error.message,
+        code: error.code,
+        stack: error.stack
+      });
+      
+      // Notify Unity of error
+      if (this.unityInstance) {
+        this.unityInstance.SendMessage('PerformanceDataManager', 'OnPerformanceDataError', error.message);
+      }
+      
       return { success: false, error: error.message };
     }
   }
